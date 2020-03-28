@@ -21,10 +21,6 @@ import utils.model as nnmodel
 import utils.data_utils as data_utils
 from utils.constants import *
 
-is_cuda = torch.cuda.is_available() and False
-if is_cuda:
-    MY_DEVICE = 'cuda'
-
 
 def main(opt):
     start_epoch = 0
