@@ -36,7 +36,8 @@ def main(opt):
                         num_stage=opt.num_stage, node_n=48)
     if is_cuda:
         model.cuda()
-    model_path_len = './checkpoint/pretrained/h36m_in10_out25.pth.tar'
+    # model_path_len = './checkpoint/pretrained/h36m_in10_out10_dctn20.pth.tar'
+    model_path_len = './checkpoint/test/ckpt_main_in10_out10_dctn20_best.pth.tar'
     print(">>> loading ckpt len from '{}'".format(model_path_len))
     if is_cuda:
         ckpt = torch.load(model_path_len)

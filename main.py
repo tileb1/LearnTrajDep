@@ -19,13 +19,18 @@ from utils.opt import Options
 from utils.h36motion import H36motion
 import utils.model as nnmodel
 import utils.data_utils as data_utils
+from utils.constants import *
+
+is_cuda = torch.cuda.is_available() and False
+if is_cuda:
+    MY_DEVICE = 'cuda'
 
 
 def main(opt):
     start_epoch = 0
     err_best = 10000
     lr_now = opt.lr
-    is_cuda = torch.cuda.is_available()
+
 
     # define log csv file
     script_name = os.path.basename(__file__).split('.')[0]
@@ -173,6 +178,10 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max
     bar = Bar('>>>', fill='>', max=len(train_loader))
     for i, (inputs, targets, all_seq) in enumerate(train_loader):
 
+        inputs = inputs.float()
+        targets = targets.float()
+        all_seq = all_seq.float()
+
         # skip the last batch if only have one sample for batch_norm layers
         batch_size = inputs.shape[0]
         if batch_size == 1:
@@ -182,7 +191,8 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max
         if is_cuda:
             inputs = Variable(inputs.cuda()).float()
             # targets = Variable(targets.cuda(async=True)).float()
-            all_seq = Variable(all_seq.cuda(async=True)).float()
+            all_seq = all_seq.to('cuda').float()
+            # all_seq = Variable(all_seq.cuda(async=True)).float()
 
         outputs = model(inputs)
         n = outputs.shape[0]
@@ -206,13 +216,14 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max
         e_err = loss_funcs.euler_error(outputs, all_seq, input_n, dim_used, dct_n)
 
         # update the training loss
-        t_l.update(loss.cpu().data.numpy()[0] * n, n)
-        t_e.update(e_err.cpu().data.numpy()[0] * n, n)
-        t_3d.update(m_err.cpu().data.numpy()[0] * n, n)
+        t_l.update(loss.cpu().data.numpy() * n, n)
+        t_e.update(e_err.cpu().data.numpy() * n, n)
+        t_3d.update(m_err.cpu().data.numpy() * n, n)
 
         bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i + 1, len(train_loader), time.time() - bt,
                                                                          time.time() - st)
         bar.next()
+
     bar.finish()
     return lr_now, t_l.avg, t_e.avg, t_3d.avg
 
@@ -234,10 +245,15 @@ def test(train_loader, model, input_n=20, output_n=50, dct_n=20, is_cuda=False, 
     for i, (inputs, targets, all_seq) in enumerate(train_loader):
         bt = time.time()
 
+        inputs = inputs.float()
+        targets = targets.float()
+        all_seq = all_seq.float()
+
         if is_cuda:
             inputs = Variable(inputs.cuda()).float()
             # targets = Variable(targets.cuda(async=True)).float()
-            all_seq = Variable(all_seq.cuda(async=True)).float()
+            all_seq = all_seq.to('cuda').float()
+            # all_seq = Variable(all_seq.cuda(async=True)).float()
 
         outputs = model(inputs)
         n = outputs.shape[0]
@@ -251,7 +267,9 @@ def test(train_loader, model, input_n=20, output_n=50, dct_n=20, is_cuda=False, 
 
         # inverse dct transformation
         _, idct_m = data_utils.get_dct_matrix(seq_len)
-        idct_m = Variable(torch.from_numpy(idct_m)).float().cuda()
+        idct_m = torch.from_numpy(idct_m).float()
+        if is_cuda:
+            idct_m = idct_m.to('cuda')
         outputs_t = outputs.view(-1, dct_n).transpose(0, 1)
         outputs_exp = torch.matmul(idct_m[:, :dct_n], outputs_t).transpose(0, 1).contiguous().view(-1, dim_used_len,
                                                                                                    seq_len).transpose(1,
@@ -276,21 +294,24 @@ def test(train_loader, model, input_n=20, output_n=50, dct_n=20, is_cuda=False, 
 
         # get 3d coordinates
         targ_p3d = data_utils.expmap2xyz_torch(targ_expmap.view(-1, dim_full_len)).view(n, output_n, -1, 3)
+        print(pred_expmap.shape)
+        print(targ_expmap.shape)
         pred_p3d = data_utils.expmap2xyz_torch(pred_expmap.view(-1, dim_full_len)).view(n, output_n, -1, 3)
 
         # update loss and testing errors
         for k in np.arange(0, len(eval_frame)):
             j = eval_frame[k]
-            t_e[k] += torch.mean(torch.norm(pred_eul[:, j, :] - targ_eul[:, j, :], 2, 1)).cpu().data.numpy()[0] * n
+            t_e[k] += torch.mean(torch.norm(pred_eul[:, j, :] - targ_eul[:, j, :], 2, 1)).cpu().data.numpy() * n
             t_3d[k] += torch.mean(torch.norm(
                 targ_p3d[:, j, :, :].contiguous().view(-1, 3) - pred_p3d[:, j, :, :].contiguous().view(-1, 3), 2,
-                1)).cpu().data.numpy()[0] * n
+                1)).cpu().data.numpy() * n
         # t_l += loss.cpu().data.numpy()[0] * n
         N += n
 
         bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i + 1, len(train_loader), time.time() - bt,
                                                                          time.time() - st)
         bar.next()
+
     bar.finish()
     return t_e / N, t_3d / N
 
@@ -306,10 +327,15 @@ def val(train_loader, model, input_n=20, dct_n=20, is_cuda=False, dim_used=[]):
     for i, (inputs, targets, all_seq) in enumerate(train_loader):
         bt = time.time()
 
+        inputs = inputs.float()
+        targets = targets.float()
+        all_seq = all_seq.float()
+
         if is_cuda:
             inputs = Variable(inputs.cuda()).float()
             # targets = Variable(targets.cuda(async=True)).float()
-            all_seq = Variable(all_seq.cuda(async=True)).float()
+            all_seq = all_seq.to('cuda').float()
+            # all_seq = Variable(all_seq.cuda(async=True)).float()
 
         outputs = model(inputs)
         n = outputs.shape[0]
@@ -323,12 +349,13 @@ def val(train_loader, model, input_n=20, dct_n=20, is_cuda=False, dim_used=[]):
         e_err = loss_funcs.euler_error(outputs, all_seq, input_n, dim_used, dct_n)
 
         # t_l.update(loss.cpu().data.numpy()[0] * n, n)
-        t_e.update(e_err.cpu().data.numpy()[0] * n, n)
-        t_3d.update(m_err.cpu().data.numpy()[0] * n, n)
+        t_e.update(e_err.cpu().data.numpy() * n, n)
+        t_3d.update(m_err.cpu().data.numpy() * n, n)
 
         bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i + 1, len(train_loader), time.time() - bt,
                                                                          time.time() - st)
         bar.next()
+
     bar.finish()
     return t_e.avg, t_3d.avg
 
