@@ -665,6 +665,10 @@ def load_data(path_to_dataset, subjects, actions, sample_rate, seq_len, input_n=
                     complete_seq = the_sequence1
                     complete_seq = np.append(complete_seq, the_sequence2, axis=0)
 
+    print(complete_seq.shape)
+    print(sampled_seq.shape)
+    print(subj)
+
     # if is not testing or validation then get the data statistics
     if not (subj == 5 and subj == 11):
         data_std = np.std(complete_seq, axis=0)

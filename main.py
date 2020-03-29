@@ -177,6 +177,9 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max
         inputs = inputs.float()
         targets = targets.float()
         all_seq = all_seq.float()
+        # print(inputs.shape)
+        # print(targets.shape)
+        # print(all_seq.shape)
 
         # skip the last batch if only have one sample for batch_norm layers
         batch_size = inputs.shape[0]
@@ -201,7 +204,7 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max
         optimizer.zero_grad()
         loss.backward()
         if max_norm:
-            nn.utils.clip_grad_norm(model.parameters(), max_norm=1)
+            nn.utils.clip_grad_norm_(model.parameters(), max_norm=1)
         optimizer.step()
         n, _, _ = all_seq.data.shape
 

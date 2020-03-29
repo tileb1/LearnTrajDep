@@ -41,19 +41,19 @@ class H36motion(Dataset):
         self.data_std = data_std
 
         # first 6 elements are global translation and global rotation
-        dim_used = dim_use[6:]
+        dim_used = dim_use[6:]  # TODO: indices in angle space
         self.all_seqs = all_seqs
         self.dim_used = dim_used
 
         all_seqs = all_seqs[:, :, dim_used]
-        all_seqs = all_seqs.transpose(0, 2, 1)
-        all_seqs = all_seqs.reshape(-1, input_n + output_n)
+        all_seqs = all_seqs.transpose(0, 2, 1)  # TODO: change index in sequence with index in angle space
+        all_seqs = all_seqs.reshape(-1, input_n + output_n)  # TODO
         all_seqs = all_seqs.transpose()
         dct_m_in, _ = data_utils.get_dct_matrix(input_n + output_n)
         dct_m_out, _ = data_utils.get_dct_matrix(input_n + output_n)
 
         # padding the observed sequence so that it has the same length as observed + future sequence
-        pad_idx = np.repeat([input_n - 1], output_n)
+        pad_idx = np.repeat([input_n - 1], output_n)  # TODO: repeat last index of input, output_n times
         i_idx = np.append(np.arange(0, input_n), pad_idx)
         input_dct_seq = np.matmul(dct_m_in[:dct_n, :], all_seqs[i_idx, :])
         input_dct_seq = input_dct_seq.transpose().reshape([-1, len(dim_used), dct_n])
