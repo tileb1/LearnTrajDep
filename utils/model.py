@@ -127,3 +127,26 @@ class GCN(nn.Module):
         y = y + x
 
         return y
+
+
+class TimeAutoencoder(nn.Module):
+    def __init__(self, input_size, hidden_size):
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Linear(input_size, 30),
+            nn.ReLU(),
+            nn.Linear(30, 25),
+            nn.ReLU(),
+            nn.Linear(25, hidden_size))
+
+        self.decoder = nn.Sequential(
+            nn.Linear(hidden_size, 25),
+            nn.ReLU(),
+            nn.Linear(25, 30),
+            nn.ReLU(),
+            nn.Linear(30, input_size))
+
+    def forward(self, x):
+        embedding = self.encoder(x)
+        out = self.decoder(embedding)
+        return out, embedding

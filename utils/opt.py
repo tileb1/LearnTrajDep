@@ -4,6 +4,7 @@
 import os
 import argparse
 from pprint import pprint
+from utils.constants import *
 
 
 class Options:
@@ -33,11 +34,12 @@ class Options:
         #                     Running options
         # ===============================================================
         self.parser.add_argument('--lr', type=float, default=5.0e-4)
+        self.parser.add_argument('--lr_autoencoder', type=float, default=5.0e-4)
         self.parser.add_argument('--lr_decay', type=int, default=2, help='every lr_decay epoch do lr decay')
         self.parser.add_argument('--lr_gamma', type=float, default=0.96)
         self.parser.add_argument('--input_n', type=int, default=10, help='observed seq length')
         self.parser.add_argument('--output_n', type=int, default=25, help='future seq length')
-        self.parser.add_argument('--dct_n', type=int, default=35, help='number of DCT coeff. preserved for 3D')
+        self.parser.add_argument('--dct_n', type=int, default=30, help='number of DCT coeff. preserved for 3D')
         self.parser.add_argument('--actions', type=str, default='all', help='path to save checkpoint')
         self.parser.add_argument('--epochs', type=int, default=50)
         self.parser.add_argument('--dropout', type=float, default=0.5,
@@ -58,6 +60,7 @@ class Options:
     def _print(self):
         print("\n==================Options=================")
         pprint(vars(self.opt), indent=4)
+        print('MY DEVICE:', MY_DEVICE)
         print("==========================================\n")
 
     def parse(self):
