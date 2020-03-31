@@ -28,8 +28,8 @@ class H36motion(Dataset):
 
         acts = data_utils.define_actions(actions)
 
-        subs = np.array([[1], [5], [11]])
-        acts = ['walking']
+        # subs = np.array([[1], [5], [11]])
+        # acts = ['walking']
 
         subjs = subs[split]
         all_seqs, dim_ignore, dim_use, data_mean, data_std = data_utils.load_data(path_to_data, subjs, acts,
@@ -57,25 +57,6 @@ class H36motion(Dataset):
         # Pad with last seen skeleton
         tmp[:, :, input_n:] = tmp[:, :, input_n-1, None]
         self.all_seqs_encoded_padded = autoencoder(tmp)[1]
-
-        # all_seqs = all_seqs.transpose(0, 2, 1)  # TODO: change index in sequence with index in angle space
-        # all_seqs = all_seqs.reshape(-1, input_n + output_n)  # TODO
-        # all_seqs = all_seqs.transpose()
-        # dct_m_in, _ = data_utils.get_dct_matrix(input_n + output_n)
-        # dct_m_out, _ = data_utils.get_dct_matrix(input_n + output_n)
-        #
-        # # padding the observed sequence so that it has the same length as observed + future sequence
-        # pad_idx = np.repeat([input_n - 1], output_n)  # TODO: repeat last index of input, output_n times
-        # i_idx = np.append(np.arange(0, input_n), pad_idx)
-        #
-        # input_dct_seq = np.matmul(dct_m_in[:dct_n, :], all_seqs[i_idx, :])
-        # input_dct_seq = input_dct_seq.transpose().reshape([-1, len(dim_used), dct_n])
-        #
-        # output_dct_seq = np.matmul(dct_m_out[:dct_n], all_seqs)
-        # output_dct_seq = output_dct_seq.transpose().reshape([-1, len(dim_used), dct_n])
-        #
-        # self.input_dct_seq = input_dct_seq
-        # self.output_dct_seq = output_dct_seq
 
     def __len__(self):
         return self.all_seqs_encoded.shape[0]

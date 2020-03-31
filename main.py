@@ -166,8 +166,6 @@ def main(opt):
                         ckpt_path=opt.ckpt,
                         is_best=False,
                         file_name=file_name)
-        if epoch == 0:
-            break
 
 
 def train(train_loader, model, optimizer, opt, time_autoencoder, input_n=20, dct_n=20, lr_now=None, max_norm=True,
