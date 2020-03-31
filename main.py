@@ -20,6 +20,7 @@ from utils.h36motion import H36motion
 import utils.model as nnmodel
 import utils.data_utils as data_utils
 from utils.constants import *
+from utils.model import TimeAutoencoder
 
 
 def main(opt):
@@ -42,9 +43,10 @@ def main(opt):
     # 48 nodes for angle prediction
     model = nnmodel.GCN(input_feature=dct_n, hidden_feature=opt.linear_size, p_dropout=opt.dropout,
                         num_stage=opt.num_stage, node_n=48)
+    model.to(MY_DEVICE)
 
-    if is_cuda:
-        model.cuda()
+    time_autoencoder = TimeAutoencoder(opt.input_n + opt.output_n, dct_n)
+    utils.load_model(time_autoencoder, 'autoencoder_{}_{}.pt'.format(opt.input_n + opt.output_n, dct_n))
 
     print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
     optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
@@ -67,12 +69,12 @@ def main(opt):
     # data loading
     print(">>> loading data")
     train_dataset = H36motion(path_to_data=opt.data_dir, actions='all', input_n=input_n, output_n=output_n,
-                              split=0, sample_rate=sample_rate, dct_n=dct_n)
+                              split=0, sample_rate=sample_rate, autoencoder=time_autoencoder)
     data_std = train_dataset.data_std
     data_mean = train_dataset.data_mean
 
     val_dataset = H36motion(path_to_data=opt.data_dir, actions='all', input_n=input_n, output_n=output_n,
-                            split=2, sample_rate=sample_rate, data_mean=data_mean, data_std=data_std, dct_n=dct_n)
+                            split=2, sample_rate=sample_rate, data_mean=data_mean, data_std=data_std, autoencoder=time_autoencoder)
 
     # load dadasets for training
     train_loader = DataLoader(
@@ -81,6 +83,7 @@ def main(opt):
         shuffle=True,
         num_workers=opt.job,
         pin_memory=True)
+
     val_loader = DataLoader(
         dataset=val_dataset,
         batch_size=opt.test_batch,
@@ -92,7 +95,7 @@ def main(opt):
     test_data = dict()
     for act in acts:
         test_dataset = H36motion(path_to_data=opt.data_dir, actions=act, input_n=input_n, output_n=output_n, split=1,
-                                 sample_rate=sample_rate, data_mean=data_mean, data_std=data_std, dct_n=dct_n)
+                                 sample_rate=sample_rate, data_mean=data_mean, data_std=data_std)
         test_data[act] = DataLoader(
             dataset=test_dataset,
             batch_size=opt.test_batch,
@@ -103,8 +106,9 @@ def main(opt):
     print(">>> train data {}".format(train_dataset.__len__()))
     print(">>> validation data {}".format(val_dataset.__len__()))
 
-    for epoch in range(start_epoch, opt.epochs):
+    time_autoencoder.to(MY_DEVICE)
 
+    for epoch in range(start_epoch, opt.epochs):
         if (epoch + 1) % opt.lr_decay == 0:
             lr_now = utils.lr_decay(optimizer, lr_now, opt.lr_gamma)
         print('==========================')
@@ -112,7 +116,7 @@ def main(opt):
         ret_log = np.array([epoch + 1])
         head = np.array(['epoch'])
         # per epoch
-        lr_now, t_l, t_e, t_3d = train(train_loader, model, optimizer, input_n=input_n,
+        lr_now, t_l, t_e, t_3d = train(train_loader, model, optimizer, opt, time_autoencoder, input_n=input_n,
                                        lr_now=lr_now, max_norm=opt.max_norm, is_cuda=is_cuda,
                                        dim_used=train_dataset.dim_used, dct_n=dct_n)
         ret_log = np.append(ret_log, [lr_now, t_l, t_e, t_3d])
@@ -143,78 +147,74 @@ def main(opt):
 
         # update log file and save checkpoint
         df = pd.DataFrame(np.expand_dims(ret_log, axis=0))
-        if epoch == start_epoch:
-            df.to_csv(opt.ckpt + '/' + script_name + '.csv', header=head, index=False)
-        else:
-            with open(opt.ckpt + '/' + script_name + '.csv', 'a') as f:
-                df.to_csv(f, header=False, index=False)
-        if not np.isnan(v_e):
-            is_best = v_e < err_best
-            err_best = min(v_e, err_best)
-        else:
-            is_best = False
+        # if epoch == start_epoch:
+        #     df.to_csv(opt.ckpt + '/' + script_name + '.csv', header=head, index=False)
+        # else:
+        #     with open(opt.ckpt + '/' + script_name + '.csv', 'a') as f:
+        #         df.to_csv(f, header=False, index=False)
+        # if not np.isnan(v_e):
+        #     is_best = v_e < err_best
+        #     err_best = min(v_e, err_best)
+        # else:
+        #     is_best = False
         file_name = ['ckpt_' + script_name + '_best.pth.tar', 'ckpt_' + script_name + '_last.pth.tar']
         utils.save_ckpt({'epoch': epoch + 1,
                          'lr': lr_now,
-                         'err': test_e[0],
+                         'err': 0,
                          'state_dict': model.state_dict(),
                          'optimizer': optimizer.state_dict()},
                         ckpt_path=opt.ckpt,
-                        is_best=is_best,
+                        is_best=False,
                         file_name=file_name)
+        if epoch == 0:
+            break
 
 
-def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max_norm=True, is_cuda=False, dim_used=[]):
+def train(train_loader, model, optimizer, opt, time_autoencoder, input_n=20, dct_n=20, lr_now=None, max_norm=True,
+          is_cuda=False, dim_used=[]):
     t_l = utils.AccumLoss()
     t_e = utils.AccumLoss()
     t_3d = utils.AccumLoss()
 
     model.train()
+
     st = time.time()
     bar = Bar('>>>', fill='>', max=len(train_loader))
-    for i, (inputs, targets, all_seq) in enumerate(train_loader):
-
-        inputs = inputs.float()
-        targets = targets.float()
-        all_seq = all_seq.float()
+    for i, (inputs, _, all_seq) in enumerate(train_loader):
+        bt = time.time()
 
         # skip the last batch if only have one sample for batch_norm layers
         batch_size = inputs.shape[0]
         if batch_size == 1:
             continue
 
-        bt = time.time()
-        if is_cuda:
-            inputs = Variable(inputs.cuda()).float()
-            # targets = Variable(targets.cuda(async=True)).float()
-            all_seq = all_seq.to('cuda').float()
-            # all_seq = Variable(all_seq.cuda(async=True)).float()
+        # transfer inputs to GPU if needed
+        inputs = inputs.to(MY_DEVICE)
+        all_seq = all_seq.to(MY_DEVICE)
 
-        outputs = model(inputs)
-        n = outputs.shape[0]
-        outputs = outputs.view(n, -1)
-        # targets = targets.view(n, -1)
-
-        loss = loss_funcs.sen_loss(outputs, all_seq, dim_used, dct_n)
-
-        # calculate loss and backward
+        # forward pass
         optimizer.zero_grad()
+        outputs = model(inputs)
+
+        # backward pass
+        loss = loss_funcs.loss_reconstruction_angle(outputs, all_seq, dim_used, time_autoencoder)
         loss.backward()
         if max_norm:
             nn.utils.clip_grad_norm_(model.parameters(), max_norm=1)
         optimizer.step()
-        n, _, _ = all_seq.data.shape
 
-        # 3d error
-        m_err = loss_funcs.mpjpe_error(outputs, all_seq, input_n, dim_used, dct_n)
-
-        # angle space error
-        e_err = loss_funcs.euler_error(outputs, all_seq, input_n, dim_used, dct_n)
-
-        # update the training loss
-        t_l.update(loss.cpu().data.numpy() * n, n)
-        t_e.update(e_err.cpu().data.numpy() * n, n)
-        t_3d.update(m_err.cpu().data.numpy() * n, n)
+        # n, _, _ = all_seq.data.shape
+        #
+        # # 3d error
+        # m_err = loss_funcs.mpjpe_error(outputs, all_seq, input_n, dim_used, dct_n)
+        #
+        # # angle space error
+        # e_err = loss_funcs.euler_error(outputs, all_seq, input_n, dim_used, dct_n)
+        #
+        # # update the training loss
+        # t_l.update(loss.cpu().data.numpy() * n, n)
+        # t_e.update(e_err.cpu().data.numpy() * n, n)
+        # t_3d.update(m_err.cpu().data.numpy() * n, n)
 
         bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i + 1, len(train_loader), time.time() - bt,
                                                                          time.time() - st)
@@ -225,6 +225,7 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max
 
 
 def test(train_loader, model, input_n=20, output_n=50, dct_n=20, is_cuda=False, dim_used=[]):
+    return 0, 0
     N = 0
     # t_l = 0
     if output_n >= 25:
@@ -313,6 +314,7 @@ def test(train_loader, model, input_n=20, output_n=50, dct_n=20, is_cuda=False, 
 
 
 def val(train_loader, model, input_n=20, dct_n=20, is_cuda=False, dim_used=[]):
+    return 0, 0
     # t_l = utils.AccumLoss()
     t_e = utils.AccumLoss()
     t_3d = utils.AccumLoss()

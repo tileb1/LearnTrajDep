@@ -12,7 +12,7 @@ from utils.utils import save_model
 
 def train_autoencoder(opt):
     train_dataset = H36motion(path_to_data=opt.data_dir, actions='all', input_n=opt.input_n, output_n=opt.output_n,
-                              split=0, sample_rate=opt.sample_rate, autoencoder=lambda x: x)
+                              split=0, sample_rate=opt.sample_rate, autoencoder=lambda x: (1, x))
 
     train_loader = DataLoader(
         dataset=train_dataset,
