@@ -177,9 +177,6 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max
         inputs = inputs.float()
         targets = targets.float()
         all_seq = all_seq.float()
-        # print(inputs.shape)
-        # print(targets.shape)
-        # print(all_seq.shape)
 
         # skip the last batch if only have one sample for batch_norm layers
         batch_size = inputs.shape[0]

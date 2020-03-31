@@ -4,15 +4,26 @@ from utils import data_utils
 from utils.constants import *
 
 
-def sen_loss(outputs, all_seq, dim_used, dct_n):
-    """
+def loss_reconstruction(outputs, all_seq, dim_used, dct_n, autoencoder):
+    reconstruction = autoencoder.decoder(outputs)
+    n, seq_len, dim_full_len = all_seq.data.shape
+    dim_used_len = len(dim_used)
+    dim_used = np.array(dim_used)
 
-    :param outputs: N * (seq_len*dim_used_len)
-    :param all_seq: N * seq_len * dim_full_len
-    :param input_n:
-    :param dim_used:
-    :return:
-    """
+    _, idct_m = data_utils.get_dct_matrix(seq_len)
+
+    idct_m = torch.from_numpy(idct_m).float().to(MY_DEVICE)
+
+    outputs_t = outputs.view(-1, dct_n).transpose(0, 1)
+    pred_expmap = torch.matmul(idct_m[:, :dct_n], outputs_t).transpose(0, 1).contiguous().view(-1, dim_used_len,
+                                                                                               seq_len).transpose(1, 2)
+    targ_expmap = all_seq.clone()[:, :, dim_used]
+
+    loss = torch.mean(torch.sum(torch.abs(pred_expmap - targ_expmap), dim=2).view(-1))
+    return loss
+
+
+def sen_loss(outputs, all_seq, dim_used, dct_n):
     n, seq_len, dim_full_len = all_seq.data.shape
     dim_used_len = len(dim_used)
     dim_used = np.array(dim_used)
