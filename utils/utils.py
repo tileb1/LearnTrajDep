@@ -46,6 +46,6 @@ def save_model(model, name):
     torch.save(model.state_dict(), './models/' + name)
 
 
-# def load_model(model, name):
-#     model.load_state_dict(torch.load('./models/' + name))
-#     model.eval()
+def load_model(model, name):
+    model.load_state_dict(torch.load('./models/' + name))
+    model.eval()

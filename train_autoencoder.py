@@ -27,7 +27,7 @@ def train_autoencoder(opt):
     optimizer = optim.Adam(autoencoder.parameters(), lr=opt.lr_autoencoder)
     loss_function = nn.MSELoss()
 
-    for epoch in range(10):
+    for epoch in range(50):
         st = time.time()
         bar = Bar('Epoch {}:'.format(epoch), fill='>', max=len(train_loader))
         average_epoch_loss = 0
@@ -53,6 +53,10 @@ def train_autoencoder(opt):
             bar.next()
 
         bar.finish()
+
+        if epoch % 10 == 9:
+            autoencoder.eval()
+            save_model(autoencoder, 'autoencoder_' + str(opt.input_n + opt.output_n) + '_' + str(opt.dct_n) + '.pt')
 
     autoencoder.eval()
     save_model(autoencoder, 'autoencoder_' + str(opt.input_n + opt.output_n) + '_' + str(opt.dct_n) + '.pt')
