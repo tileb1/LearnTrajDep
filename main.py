@@ -28,7 +28,6 @@ def main(opt):
     err_best = 10000
     lr_now = opt.lr
 
-
     # define log csv file
     script_name = os.path.basename(__file__).split('.')[0]
     script_name = script_name + "_in{:d}_out{:d}_dctn{:d}".format(opt.input_n, opt.output_n, opt.dct_n)
@@ -74,7 +73,8 @@ def main(opt):
     data_mean = train_dataset.data_mean
 
     val_dataset = H36motion(path_to_data=opt.data_dir, actions='all', input_n=input_n, output_n=output_n,
-                            split=2, sample_rate=sample_rate, data_mean=data_mean, data_std=data_std, autoencoder=time_autoencoder)
+                            split=2, sample_rate=sample_rate, data_mean=data_mean, data_std=data_std,
+                            autoencoder=time_autoencoder)
 
     # load dadasets for training
     train_loader = DataLoader(
