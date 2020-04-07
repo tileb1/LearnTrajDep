@@ -10,7 +10,7 @@ import time
 from utils.utils import save_model
 
 
-def train_autoencoder(opt):
+def train_autoencoder(opt, extension=''):
     train_dataset = H36motion(path_to_data=opt.data_dir, actions='all', input_n=opt.input_n, output_n=opt.output_n,
                               split=0, sample_rate=opt.sample_rate, autoencoder=lambda x: (1, x))
 
@@ -42,8 +42,14 @@ def train_autoencoder(opt):
             out_padded, _ = autoencoder(padded_seq)
 
             # backward pass
-            loss = loss_function(out_true, true_seq)
-            loss += loss_function(out_padded, padded_seq)
+            loss = loss_function(out_true, true_seq)  # reconstruction loss
+            loss += loss_function(out_padded, padded_seq)  # reconstruction loss
+
+            loss += 0.5 * loss_function(out_true[:, :, 1:], true_seq[:, :, :-1])  # smoothing loss
+            loss += 0.5 * loss_function(out_true[:, :, :-1], true_seq[:, :, 1:])  # smoothing loss
+            loss += 0.5 * loss_function(out_padded[:, :, 1:], padded_seq[:, :, :-1])  # smoothing loss
+            loss += 0.5 * loss_function(out_padded[:, :, :-1], padded_seq[:, :, 1:])  # smoothing loss
+
             average_epoch_loss = (i * average_epoch_loss + loss.item()) / (i+1)
             loss.backward()
             optimizer.step()
@@ -56,12 +62,14 @@ def train_autoencoder(opt):
 
         if epoch % 10 == 9:
             autoencoder.eval()
-            save_model(autoencoder, 'autoencoder_' + str(opt.input_n + opt.output_n) + '_' + str(opt.dct_n) + '.pt')
+            save_model(autoencoder, 'autoencoder_' + str(opt.input_n + opt.output_n) + '_' +
+                       str(opt.dct_n) + '_' + extension + '.pt')
 
     autoencoder.eval()
-    save_model(autoencoder, 'autoencoder_' + str(opt.input_n + opt.output_n) + '_' + str(opt.dct_n) + '.pt')
+    save_model(autoencoder, 'autoencoder_' + str(opt.input_n + opt.output_n) + '_' +
+               str(opt.dct_n) + '_' + extension + '.pt')
 
 
 if __name__ == "__main__":
     option = Options().parse()
-    train_autoencoder(option)
+    train_autoencoder(option, extension='')
