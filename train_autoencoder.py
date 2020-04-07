@@ -72,4 +72,4 @@ def train_autoencoder(opt, extension=''):
 
 if __name__ == "__main__":
     option = Options().parse()
-    train_autoencoder(option, extension='')
+    train_autoencoder(option, extension='smoothingloss')
