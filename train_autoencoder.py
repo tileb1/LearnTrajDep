@@ -45,10 +45,10 @@ def train_autoencoder(opt, extension=''):
             loss = loss_function(out_true, true_seq)  # reconstruction loss
             loss += loss_function(out_padded, padded_seq)  # reconstruction loss
 
-            loss += 0.5 * loss_function(out_true[:, :, 1:], true_seq[:, :, :-1])  # smoothing loss
-            loss += 0.5 * loss_function(out_true[:, :, :-1], true_seq[:, :, 1:])  # smoothing loss
-            loss += 0.5 * loss_function(out_padded[:, :, 1:], padded_seq[:, :, :-1])  # smoothing loss
-            loss += 0.5 * loss_function(out_padded[:, :, :-1], padded_seq[:, :, 1:])  # smoothing loss
+            # loss += 0.5 * loss_function(out_true[:, :, 1:], true_seq[:, :, :-1])  # smoothing loss
+            # loss += 0.5 * loss_function(out_true[:, :, :-1], true_seq[:, :, 1:])  # smoothing loss
+            # loss += 0.5 * loss_function(out_padded[:, :, 1:], padded_seq[:, :, :-1])  # smoothing loss
+            # loss += 0.5 * loss_function(out_padded[:, :, :-1], padded_seq[:, :, 1:])  # smoothing loss
 
             average_epoch_loss = (i * average_epoch_loss + loss.item()) / (i+1)
             loss.backward()
