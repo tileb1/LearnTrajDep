@@ -122,7 +122,7 @@ def main(opt):
         ret_log = np.append(ret_log, [lr_now, t_l, t_e, t_3d])
         head = np.append(head, ['lr', 't_l', 't_e', 't_3d'])
 
-        v_e, v_3d = val(val_loader, model, input_n=input_n, is_cuda=is_cuda, dim_used=train_dataset.dim_used,
+        v_e, v_3d = val(val_loader, model, time_autoencoder, input_n=input_n, is_cuda=is_cuda, dim_used=train_dataset.dim_used,
                         dct_n=dct_n)
 
         ret_log = np.append(ret_log, [v_e, v_3d])
@@ -131,7 +131,7 @@ def main(opt):
         test_3d_temp = np.array([])
         test_3d_head = np.array([])
         for act in acts:
-            test_e, test_3d = test(test_data[act], model, input_n=input_n, output_n=output_n, is_cuda=is_cuda,
+            test_e, test_3d = test(test_data[act], model, time_autoencoder, input_n=input_n, output_n=output_n, is_cuda=is_cuda,
                                    dim_used=train_dataset.dim_used, dct_n=dct_n)
             ret_log = np.append(ret_log, test_e)
             test_3d_temp = np.append(test_3d_temp, test_3d)
@@ -147,24 +147,24 @@ def main(opt):
 
         # update log file and save checkpoint
         df = pd.DataFrame(np.expand_dims(ret_log, axis=0))
-        # if epoch == start_epoch:
-        #     df.to_csv(opt.ckpt + '/' + script_name + '.csv', header=head, index=False)
-        # else:
-        #     with open(opt.ckpt + '/' + script_name + '.csv', 'a') as f:
-        #         df.to_csv(f, header=False, index=False)
-        # if not np.isnan(v_e):
-        #     is_best = v_e < err_best
-        #     err_best = min(v_e, err_best)
-        # else:
-        #     is_best = False
+        if epoch == start_epoch:
+            df.to_csv(opt.ckpt + '/' + script_name + '.csv', header=head, index=False)
+        else:
+            with open(opt.ckpt + '/' + script_name + '.csv', 'a') as f:
+                df.to_csv(f, header=False, index=False)
+        if not np.isnan(v_e):
+            is_best = v_e < err_best
+            err_best = min(v_e, err_best)
+        else:
+            is_best = False
         file_name = ['ckpt_' + script_name + '_best.pth.tar', 'ckpt_' + script_name + '_last.pth.tar']
         utils.save_ckpt({'epoch': epoch + 1,
                          'lr': lr_now,
-                         'err': 0,
+                         'err': test_e[0],
                          'state_dict': model.state_dict(),
                          'optimizer': optimizer.state_dict()},
                         ckpt_path=opt.ckpt,
-                        is_best=False,
+                        is_best=is_best,
                         file_name=file_name)
 
 
@@ -201,18 +201,18 @@ def train(train_loader, model, optimizer, opt, time_autoencoder, input_n=20, dct
             nn.utils.clip_grad_norm_(model.parameters(), max_norm=1)
         optimizer.step()
 
-        # n, _, _ = all_seq.data.shape
-        #
-        # # 3d error
-        # m_err = loss_funcs.mpjpe_error(outputs, all_seq, input_n, dim_used, dct_n)
-        #
-        # # angle space error
-        # e_err = loss_funcs.euler_error(outputs, all_seq, input_n, dim_used, dct_n)
-        #
-        # # update the training loss
-        # t_l.update(loss.cpu().data.numpy() * n, n)
-        # t_e.update(e_err.cpu().data.numpy() * n, n)
-        # t_3d.update(m_err.cpu().data.numpy() * n, n)
+        n, _, _ = all_seq.data.shape
+
+        # 3d error
+        m_err = loss_funcs.new_mpjpe_error(outputs, all_seq, input_n, dim_used, dct_n, time_autoencoder)
+
+        # angle space error
+        e_err = loss_funcs.new_euler_error(outputs, all_seq, input_n, dim_used, dct_n, time_autoencoder)
+
+        # update the training loss
+        t_l.update(loss.cpu().data.numpy() * n, n)
+        t_e.update(e_err.cpu().data.numpy() * n, n)
+        t_3d.update(m_err.cpu().data.numpy() * n, n)
 
         bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i + 1, len(train_loader), time.time() - bt,
                                                                          time.time() - st)
@@ -222,8 +222,7 @@ def train(train_loader, model, optimizer, opt, time_autoencoder, input_n=20, dct
     return lr_now, t_l.avg, t_e.avg, t_3d.avg
 
 
-def test(train_loader, model, input_n=20, output_n=50, dct_n=20, is_cuda=False, dim_used=[]):
-    return 0, 0
+def test(train_loader, model, time_autoencoder, input_n=20, output_n=50, dct_n=20, is_cuda=False, dim_used=[]):
     N = 0
     # t_l = 0
     if output_n >= 25:
@@ -251,24 +250,15 @@ def test(train_loader, model, input_n=20, output_n=50, dct_n=20, is_cuda=False, 
             # all_seq = Variable(all_seq.cuda(async=True)).float()
 
         outputs = model(inputs)
-        n = outputs.shape[0]
+        # n = outputs.shape[0]
         # outputs = outputs.view(n, -1)
         # targets = targets.view(n, -1)
 
         # loss = loss_funcs.sen_loss(outputs, all_seq, dim_used)
 
         n, seq_len, dim_full_len = all_seq.data.shape
-        dim_used_len = len(dim_used)
 
-        # inverse dct transformation
-        _, idct_m = data_utils.get_dct_matrix(seq_len)
-        idct_m = torch.from_numpy(idct_m).float()
-        if is_cuda:
-            idct_m = idct_m.to('cuda')
-        outputs_t = outputs.view(-1, dct_n).transpose(0, 1)
-        outputs_exp = torch.matmul(idct_m[:, :dct_n], outputs_t).transpose(0, 1).contiguous().view(-1, dim_used_len,
-                                                                                                   seq_len).transpose(1,
-                                                                                                                      2)
+        outputs_exp = time_autoencoder.decoder(outputs).transpose(1, 2)
 
         pred_expmap = all_seq.clone()
         dim_used = np.array(dim_used)
@@ -311,8 +301,7 @@ def test(train_loader, model, input_n=20, output_n=50, dct_n=20, is_cuda=False, 
     return t_e / N, t_3d / N
 
 
-def val(train_loader, model, input_n=20, dct_n=20, is_cuda=False, dim_used=[]):
-    return 0, 0
+def val(train_loader, model, time_autoencoder, input_n=20, dct_n=20, is_cuda=False, dim_used=[]):
     # t_l = utils.AccumLoss()
     t_e = utils.AccumLoss()
     t_3d = utils.AccumLoss()
@@ -334,15 +323,15 @@ def val(train_loader, model, input_n=20, dct_n=20, is_cuda=False, dim_used=[]):
             # all_seq = Variable(all_seq.cuda(async=True)).float()
 
         outputs = model(inputs)
-        n = outputs.shape[0]
-        outputs = outputs.view(n, -1)
+        # n = outputs.shape[0]
+        # outputs = outputs.view(n, -1)
         # targets = targets.view(n, -1)
 
         # loss = loss_funcs.sen_loss(outputs, all_seq, dim_used)
 
         n, _, _ = all_seq.data.shape
-        m_err = loss_funcs.mpjpe_error(outputs, all_seq, input_n, dim_used, dct_n)
-        e_err = loss_funcs.euler_error(outputs, all_seq, input_n, dim_used, dct_n)
+        m_err = loss_funcs.new_mpjpe_error(outputs, all_seq, input_n, dim_used, dct_n, time_autoencoder)
+        e_err = loss_funcs.new_euler_error(outputs, all_seq, input_n, dim_used, dct_n, time_autoencoder)
 
         # t_l.update(loss.cpu().data.numpy()[0] * n, n)
         t_e.update(e_err.cpu().data.numpy() * n, n)

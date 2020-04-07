@@ -28,6 +28,41 @@ def sen_loss(outputs, all_seq, dim_used, dct_n):
     return loss
 
 
+def new_euler_error(outputs, all_seq, input_n, dim_used, dct_n, autoencoder):
+    """
+
+    :param outputs:
+    :param all_seq:
+    :param input_n:
+    :param dim_used:
+    :return:
+    """
+    n, seq_len, dim_full_len = all_seq.data.shape
+
+    outputs_exp = autoencoder.decoder(outputs).transpose(1, 2)
+
+    pred_expmap = all_seq.clone()
+    dim_used = np.array(dim_used)
+    pred_expmap[:, :, dim_used] = outputs_exp
+
+    pred_expmap = pred_expmap[:, input_n:, :].contiguous().view(-1, dim_full_len)
+    targ_expmap = all_seq[:, input_n:, :].clone().contiguous().view(-1, dim_full_len)
+
+    # pred_expmap[:, 0:6] = 0
+    # targ_expmap[:, 0:6] = 0
+    pred_expmap = pred_expmap.view(-1, 3)
+    targ_expmap = targ_expmap.view(-1, 3)
+
+    pred_eul = data_utils.rotmat2euler_torch(data_utils.expmap2rotmat_torch(pred_expmap))
+    pred_eul = pred_eul.view(-1, dim_full_len)
+
+    targ_eul = data_utils.rotmat2euler_torch(data_utils.expmap2rotmat_torch(targ_expmap))
+    targ_eul = targ_eul.view(-1, dim_full_len)
+    mean_errors = torch.mean(torch.norm(pred_eul - targ_eul, 2, 1))
+
+    return mean_errors
+
+
 def euler_error(outputs, all_seq, input_n, dim_used, dct_n):
     """
 
@@ -65,6 +100,39 @@ def euler_error(outputs, all_seq, input_n, dim_used, dct_n):
     mean_errors = torch.mean(torch.norm(pred_eul - targ_eul, 2, 1))
 
     return mean_errors
+
+
+def new_mpjpe_error(outputs, all_seq, input_n, dim_used, dct_n, autoencoder):
+    """
+
+    :param outputs:
+    :param all_seq:
+    :param input_n:
+    :param dim_used:
+    :param data_mean:
+    :param data_std:
+    :return:
+    """
+    n, seq_len, dim_full_len = all_seq.data.shape
+
+    outputs_exp = autoencoder.decoder(outputs).transpose(1, 2)
+
+    pred_expmap = all_seq.clone()
+    dim_used = np.array(dim_used)
+    pred_expmap[:, :, dim_used] = outputs_exp
+    pred_expmap = pred_expmap[:, input_n:, :].contiguous().view(-1, dim_full_len).clone()
+    targ_expmap = all_seq[:, input_n:, :].clone().contiguous().view(-1, dim_full_len)
+
+    pred_expmap[:, 0:6] = 0
+    targ_expmap[:, 0:6] = 0
+
+    targ_p3d = data_utils.expmap2xyz_torch(targ_expmap).view(-1, 3)
+
+    pred_p3d = data_utils.expmap2xyz_torch(pred_expmap).view(-1, 3)
+
+    mean_3d_err = torch.mean(torch.norm(targ_p3d - pred_p3d, 2, 1))
+
+    return mean_3d_err
 
 
 def mpjpe_error(outputs, all_seq, input_n, dim_used, dct_n):
