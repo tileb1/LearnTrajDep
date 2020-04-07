@@ -4,6 +4,11 @@ from utils import data_utils
 import torch
 
 
+def get_raw_loader(loader):
+    for i in loader:
+        yield i[0]['raw'], i[1]['raw'], i[2]
+
+
 class H36motion(Dataset):
 
     def __init__(self, path_to_data, actions, input_n=10, output_n=10, split=0, sample_rate=2, data_mean=0,
@@ -76,5 +81,6 @@ class H36motion(Dataset):
         return self.all_seqs_encoded.shape[0]
 
     def __getitem__(self, item):
-        return self.all_seqs_encoded_padded[item], self.all_seqs_encoded[item], \
+        return {'raw': self.all_seqs_encoded_padded[item], 'smooth': self.all_seqs_smoothed_padded[item]}, \
+               {'raw': self.all_seqs_encoded[item], 'smooth': self.all_seqs_smoothed[item]}, \
                self.all_seqs[item]
