@@ -195,7 +195,7 @@ def revert_output_format(poses, data_mean, data_std, dim_to_ignore, actions, one
     return poses_out_list
 
 
-def readCSVasFloat(filename):
+def readCSVasFloat(filename, preprocess=False):
     """
     Borrowed from SRNN code. Reads a csv and returns a float matrix.
     https://github.com/asheshjain399/NeuralModels/blob/master/neuralmodels/utils.py#L34
@@ -213,6 +213,15 @@ def readCSVasFloat(filename):
             returnArray.append(np.array([np.float32(x) for x in line]))
 
     returnArray = np.array(returnArray)
+
+    win_size = 5
+    non_overlap = (win_size - 1) // 2
+    if preprocess:
+        win = np.hamming(win_size)
+        win = win / win.sum()
+        returnArray = np.apply_along_axis(lambda x: np.convolve(x, win, "valid"), 0, returnArray)
+    else:
+        returnArray = returnArray[non_overlap:-non_overlap]
     return returnArray
 
 
@@ -592,7 +601,8 @@ def expmap2xyz_torch_cmu(expmap):
     return xyz
 
 
-def load_data(path_to_dataset, subjects, actions, sample_rate, seq_len, input_n=10, data_mean=None, data_std=None):
+def load_data(path_to_dataset, subjects, actions, sample_rate, seq_len, input_n=10, data_mean=None,
+              data_std=None, preprocess=False):
     """
     adapted from
     https://github.com/una-dinosauria/human-motion-prediction/src/data_utils.py#L216
@@ -622,7 +632,7 @@ def load_data(path_to_dataset, subjects, actions, sample_rate, seq_len, input_n=
                     print("Reading subject {0}, action {1}, subaction {2}".format(subj, action, subact))
 
                     filename = '{0}/S{1}/{2}_{3}.txt'.format(path_to_dataset, subj, action, subact)
-                    action_sequence = readCSVasFloat(filename)
+                    action_sequence = readCSVasFloat(filename, preprocess=preprocess)
                     n, d = action_sequence.shape
                     even_list = range(0, n, sample_rate)
                     the_sequence = np.array(action_sequence[even_list, :])
@@ -642,7 +652,7 @@ def load_data(path_to_dataset, subjects, actions, sample_rate, seq_len, input_n=
             else:
                 print("Reading subject {0}, action {1}, subaction {2}".format(subj, action, 1))
                 filename = '{0}/S{1}/{2}_{3}.txt'.format(path_to_dataset, subj, action, 1)
-                action_sequence = readCSVasFloat(filename)
+                action_sequence = readCSVasFloat(filename, preprocess=preprocess)
                 n, d = action_sequence.shape
                 even_list = range(0, n, sample_rate)
                 the_sequence1 = np.array(action_sequence[even_list, :])
@@ -650,7 +660,7 @@ def load_data(path_to_dataset, subjects, actions, sample_rate, seq_len, input_n=
 
                 print("Reading subject {0}, action {1}, subaction {2}".format(subj, action, 2))
                 filename = '{0}/S{1}/{2}_{3}.txt'.format(path_to_dataset, subj, action, 2)
-                action_sequence = readCSVasFloat(filename)
+                action_sequence = readCSVasFloat(filename, preprocess=preprocess)
                 n, d = action_sequence.shape
                 even_list = range(0, n, sample_rate)
                 the_sequence2 = np.array(action_sequence[even_list, :])
@@ -665,7 +675,7 @@ def load_data(path_to_dataset, subjects, actions, sample_rate, seq_len, input_n=
                     complete_seq = the_sequence1
                     complete_seq = np.append(complete_seq, the_sequence2, axis=0)
 
-
+    # TODO: this if statement does nothing (delete or replace)
     # if is not testing or validation then get the data statistics
     if not (subj == 5 and subj == 11):
         data_std = np.std(complete_seq, axis=0)

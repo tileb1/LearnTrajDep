@@ -28,8 +28,8 @@ class H36motion(Dataset):
 
         acts = data_utils.define_actions(actions)
 
-        # subs = np.array([[1], [5], [11]])
-        # acts = ['walking']
+        subs = np.array([[1], [5], [11]])
+        acts = ['walking']
 
         subjs = subs[split]
         all_seqs, dim_ignore, dim_use, data_mean, data_std = data_utils.load_data(path_to_data, subjs, acts,
@@ -37,7 +37,16 @@ class H36motion(Dataset):
                                                                                   input_n + output_n,
                                                                                   data_mean=data_mean,
                                                                                   data_std=data_std,
-                                                                                  input_n=input_n)
+                                                                                  input_n=input_n,
+                                                                                  preprocess=False)
+
+        all_seqs_smoothed, _, _, _, _ = data_utils.load_data(path_to_data, subjs, acts,
+                                                             sample_rate,
+                                                             input_n + output_n,
+                                                             data_mean=None,
+                                                             data_std=None,
+                                                             input_n=input_n,
+                                                             preprocess=True)
 
         self.data_mean = data_mean
         self.data_std = data_std
@@ -49,14 +58,19 @@ class H36motion(Dataset):
 
         # (nb_total_seq, len_seq, nb_joints)
         all_seqs = torch.from_numpy(all_seqs[:, :, dim_used]).float()
+        all_seqs_smoothed = torch.from_numpy(all_seqs_smoothed[:, :, dim_used]).float()
 
         # (nb_total_seq, nb_joints, hidden_dim)
         self.all_seqs_encoded = autoencoder(all_seqs.transpose(2, 1))[1]
+        self.all_seqs_smoothed = autoencoder(all_seqs_smoothed.transpose(2, 1))[1]
         tmp = all_seqs.transpose(2, 1).clone()
+        tmp_smoothed = all_seqs_smoothed.transpose(2, 1).clone()
 
         # Pad with last seen skeleton
-        tmp[:, :, input_n:] = tmp[:, :, input_n-1, None]
+        tmp[:, :, input_n:] = tmp[:, :, input_n - 1, None]
+        tmp_smoothed[:, :, input_n:] = tmp_smoothed[:, :, input_n - 1, None]
         self.all_seqs_encoded_padded = autoencoder(tmp)[1]
+        self.all_seqs_smoothed_padded = autoencoder(tmp_smoothed)[1]
 
     def __len__(self):
         return self.all_seqs_encoded.shape[0]
