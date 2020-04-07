@@ -16,7 +16,7 @@ import pandas as pd
 
 from utils import loss_funcs, utils as utils
 from utils.opt import Options
-from utils.h36motion import H36motion
+from utils.h36motion import H36motion, get_raw_loader
 import utils.model as nnmodel
 import utils.data_utils as data_utils
 from utils.constants import *
@@ -179,7 +179,7 @@ def train(train_loader, model, optimizer, opt, time_autoencoder, input_n=20, dct
 
     st = time.time()
     bar = Bar('>>>', fill='>', max=len(train_loader))
-    for i, (inputs, _, all_seq) in enumerate(train_loader):
+    for i, (inputs, _, all_seq) in enumerate(get_raw_loader(train_loader)):
         bt = time.time()
 
         # skip the last batch if only have one sample for batch_norm layers
@@ -237,7 +237,7 @@ def test(train_loader, model, time_autoencoder, input_n=20, output_n=50, dct_n=2
     model.eval()
     st = time.time()
     bar = Bar('>>>', fill='>', max=len(train_loader))
-    for i, (inputs, targets, all_seq) in enumerate(train_loader):
+    for i, (inputs, targets, all_seq) in enumerate(get_raw_loader(train_loader)):
         bt = time.time()
 
         inputs = inputs.float()
@@ -310,7 +310,7 @@ def val(train_loader, model, time_autoencoder, input_n=20, dct_n=20, is_cuda=Fal
     model.eval()
     st = time.time()
     bar = Bar('>>>', fill='>', max=len(train_loader))
-    for i, (inputs, targets, all_seq) in enumerate(train_loader):
+    for i, (inputs, targets, all_seq) in enumerate(get_raw_loader(train_loader)):
         bt = time.time()
 
         inputs = inputs.float()

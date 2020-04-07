@@ -17,7 +17,7 @@ from matplotlib import pyplot as plt
 
 from utils import loss_funcs, utils as utils
 from utils.opt import Options
-from utils.h36motion import H36motion
+from utils.h36motion import H36motion, get_raw_loader
 import utils.model as nnmodel
 import utils.data_utils as data_utils
 import utils.viz as viz
@@ -73,7 +73,7 @@ def main(opt):
     fig = plt.figure()
     ax = plt.gca(projection='3d')
     for act in acts:
-        for i, (inputs, _, all_seq) in enumerate(test_data[act]):
+        for i, (inputs, _, all_seq) in enumerate(get_raw_loader(test_data[act])):
             outputs = model(inputs)
             preds = time_autoencoder.decoder(outputs)
             pred_exmap = all_seq.clone()
