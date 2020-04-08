@@ -134,16 +134,16 @@ class TimeAutoencoder(nn.Module):
         super().__init__()
         self.encoder = nn.Sequential(
             nn.Linear(input_size, 30),
-            nn.ReLU(),
+            nn.Tanh(),
             nn.Linear(30, 25),
-            nn.ReLU(),
+            nn.Tanh(),
             nn.Linear(25, hidden_size))
 
         self.decoder = nn.Sequential(
             nn.Linear(hidden_size, 25),
-            nn.ReLU(),
+            nn.Tanh(),
             nn.Linear(25, 30),
-            nn.ReLU(),
+            nn.Tanh(),
             nn.Linear(30, input_size))
 
     def forward(self, x):
