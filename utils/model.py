@@ -130,20 +130,20 @@ class GCN(nn.Module):
 
 
 class TimeAutoencoder(nn.Module):
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, input_size, hidden_size, activation=nn.Tanh()):
         super().__init__()
         self.encoder = nn.Sequential(
             nn.Linear(input_size, 30),
-            nn.Tanh(),
+            activation,
             nn.Linear(30, 25),
-            nn.Tanh(),
+            activation,
             nn.Linear(25, hidden_size))
 
         self.decoder = nn.Sequential(
             nn.Linear(hidden_size, 25),
-            nn.Tanh(),
+            activation,
             nn.Linear(25, 30),
-            nn.Tanh(),
+            activation,
             nn.Linear(30, input_size))
 
     def forward(self, x):
