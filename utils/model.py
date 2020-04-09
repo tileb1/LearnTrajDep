@@ -150,3 +150,14 @@ class TimeAutoencoder(nn.Module):
         embedding = self.encoder(x)
         out = self.decoder(embedding)
         return out, embedding
+
+
+class IdentityAutoencoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.encoder = lambda x: x
+
+        self.decoder = lambda x: x
+
+    def forward(self, x):
+        return x, x

@@ -20,7 +20,7 @@ from utils.h36motion import H36motion, get_raw_loader
 import utils.model as nnmodel
 import utils.data_utils as data_utils
 from utils.constants import *
-from utils.model import TimeAutoencoder
+from utils.model import TimeAutoencoder, IdentityAutoencoder
 
 
 def main(opt):
@@ -44,9 +44,10 @@ def main(opt):
                         num_stage=opt.num_stage, node_n=48)
     model.to(MY_DEVICE)
 
+    # TODO: set back to how it was before
     # time_autoencoder = TimeAutoencoder(opt.input_n + opt.output_n, dct_n)
     # utils.load_model(time_autoencoder, 'autoencoder_{}_{}.pt'.format(opt.input_n + opt.output_n, dct_n))
-    time_autoencoder = lambda x: (x, x)
+    time_autoencoder = IdentityAutoencoder()
 
     print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
     optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
