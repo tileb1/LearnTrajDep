@@ -44,8 +44,9 @@ def main(opt):
                         num_stage=opt.num_stage, node_n=48)
     model.to(MY_DEVICE)
 
-    time_autoencoder = TimeAutoencoder(opt.input_n + opt.output_n, dct_n)
-    utils.load_model(time_autoencoder, 'autoencoder_{}_{}.pt'.format(opt.input_n + opt.output_n, dct_n))
+    # time_autoencoder = TimeAutoencoder(opt.input_n + opt.output_n, dct_n)
+    # utils.load_model(time_autoencoder, 'autoencoder_{}_{}.pt'.format(opt.input_n + opt.output_n, dct_n))
+    time_autoencoder = lambda x: (x, x)
 
     print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
     optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
