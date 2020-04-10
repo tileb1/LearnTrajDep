@@ -7,7 +7,7 @@ from utils.constants import *
 def loss_reconstruction_angle(outputs, all_seq, dim_used, autoencoder):
     reconstruction = autoencoder.decoder(outputs)
     target = all_seq[:, :, dim_used].transpose(1, 2)
-    return torch.abs(target-reconstruction).sum()
+    return torch.abs(target-reconstruction).sum() / (target.shape[0] * target.shape[1])
 
 
 def sen_loss(outputs, all_seq, dim_used, dct_n):
