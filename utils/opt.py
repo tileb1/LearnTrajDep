@@ -41,7 +41,7 @@ class Options:
         self.parser.add_argument('--output_n', type=int, default=25, help='future seq length')
         self.parser.add_argument('--dct_n', type=int, default=30, help='number of DCT coeff. preserved for 3D')
         self.parser.add_argument('--actions', type=str, default='all', help='path to save checkpoint')
-        self.parser.add_argument('--epochs', type=int, default=50)
+        self.parser.add_argument('--epochs', type=int, default=25)
         self.parser.add_argument('--dropout', type=float, default=0.5,
                                  help='dropout probability, 1.0 to make no dropout')
         self.parser.add_argument('--train_batch', type=int, default=16)
