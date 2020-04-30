@@ -7,7 +7,7 @@ import torch
 class H36motion(Dataset):
 
     def __init__(self, path_to_data, actions, input_n=10, output_n=10, split=0, sample_rate=2, data_mean=0,
-                 data_std=0, autoencoder=lambda x: (1, x)):
+                 data_std=0, autoencoder=lambda x: (1, x), subset=False):
         """
         read h36m data to get the dct coefficients.
         :param path_to_data:
@@ -28,8 +28,9 @@ class H36motion(Dataset):
 
         acts = data_utils.define_actions(actions)
 
-        # subs = np.array([[1], [5], [11]])
-        # acts = ['walking']
+        if subset:
+            subs = np.array([[1], [5], [11]])
+            acts = ['walking']
 
         subjs = subs[split]
         all_seqs, dim_ignore, dim_use, data_mean, data_std = data_utils.load_data(path_to_data, subjs, acts,

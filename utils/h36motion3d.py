@@ -4,11 +4,12 @@ from h5py import File
 import scipy.io as sio
 from utils import data_utils
 from matplotlib import pyplot as plt
+import torch
 
 
 class H36motion3D(Dataset):
 
-    def __init__(self, path_to_data, actions, input_n=20, output_n=10, dct_used=15, split=0, sample_rate=2):
+    def __init__(self, path_to_data, actions, input_n=20, output_n=10, dct_used=15, split=0, sample_rate=2, subset=False):
         """
         :param path_to_data:
         :param actions:
@@ -25,8 +26,9 @@ class H36motion3D(Dataset):
         subs = np.array([[1, 6, 7, 8, 9], [5], [11]])
         acts = data_utils.define_actions(actions)
 
-        # subs = np.array([[1], [5], [11]])
-        # acts = ['walking']
+        if subset:
+            subs = np.array([[1], [5], [11]])
+            acts = ['walking']
 
         subjs = subs[split]
         all_seqs, dim_ignore, dim_used = data_utils.load_data_3d(path_to_data, subjs, acts, sample_rate,
@@ -50,8 +52,8 @@ class H36motion3D(Dataset):
         output_dct_seq = output_dct_seq.transpose().reshape([-1, len(dim_used), dct_used])
         # output_dct_seq = output_dct_seq.reshape(-1, len(dim_used) * dct_used)
 
-        self.input_dct_seq = input_dct_seq
-        self.output_dct_seq = output_dct_seq
+        self.input_dct_seq = torch.from_numpy(input_dct_seq).float()
+        self.output_dct_seq = torch.from_numpy(output_dct_seq).float()
 
     def __len__(self):
         return np.shape(self.input_dct_seq)[0]

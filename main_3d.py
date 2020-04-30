@@ -18,13 +18,13 @@ from utils.opt import Options
 from utils.h36motion3d import H36motion3D
 import utils.model as nnmodel
 import utils.data_utils as data_utils
+from utils.constants import *
 
 
 def main(opt):
     start_epoch = 0
     err_best = 10000
     lr_now = opt.lr
-    is_cuda = torch.cuda.is_available()
 
     # save option in log
     script_name = os.path.basename(__file__).split('.')[0]
@@ -40,8 +40,7 @@ def main(opt):
     model = nnmodel.GCN(input_feature=dct_n, hidden_feature=opt.linear_size, p_dropout=opt.dropout,
                         num_stage=opt.num_stage, node_n=66)
 
-    if is_cuda:
-        model.cuda()
+    model.to(MY_DEVICE)
 
     print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
     optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
@@ -166,22 +165,24 @@ def train(train_loader, model, optimizer, lr_now=None, max_norm=True, is_cuda=Fa
             continue
 
         bt = time.time()
-        if is_cuda:
-            inputs = Variable(inputs.cuda()).float()
-            all_seq = Variable(all_seq.cuda(async=True)).float()
 
+        # transfer inputs to GPU if needed
+        inputs = inputs.to(MY_DEVICE)
+        all_seq = all_seq.to(MY_DEVICE)
+
+        # forward pass
+        optimizer.zero_grad()
         outputs = model(inputs)
 
-        # calculate loss and backward
+        # backward pass
         loss = loss_funcs.mpjpe_error_p3d(outputs, all_seq, dct_n, dim_used)
-        optimizer.zero_grad()
         loss.backward()
         if max_norm:
-            nn.utils.clip_grad_norm(model.parameters(), max_norm=1)
+            nn.utils.clip_grad_norm_(model.parameters(), max_norm=1)
         optimizer.step()
 
         # update the training loss
-        t_l.update(loss.cpu().data.numpy()[0] * batch_size, batch_size)
+        t_l.update(loss.cpu().data.numpy() * batch_size, batch_size)
 
         bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i+1, len(train_loader), time.time() - bt,
                                                                          time.time() - st)
@@ -205,9 +206,8 @@ def test(train_loader, model, input_n=20, output_n=50, is_cuda=False, dim_used=[
     for i, (inputs, targets, all_seq) in enumerate(train_loader):
         bt = time.time()
 
-        if is_cuda:
-            inputs = Variable(inputs.cuda()).float()
-            all_seq = Variable(all_seq.cuda(async=True)).float()
+        inputs = inputs.to(MY_DEVICE)
+        all_seq = all_seq.to(MY_DEVICE)
 
         outputs = model(inputs)
 
@@ -215,7 +215,7 @@ def test(train_loader, model, input_n=20, output_n=50, is_cuda=False, dim_used=[
         dim_used_len = len(dim_used)
 
         _, idct_m = data_utils.get_dct_matrix(seq_len)
-        idct_m = Variable(torch.from_numpy(idct_m)).float().cuda()
+        idct_m = Variable(torch.from_numpy(idct_m)).float().to(MY_DEVICE)
         outputs_t = outputs.view(-1, dct_n).transpose(0, 1)
         outputs_3d = torch.matmul(idct_m[:, 0:dct_n], outputs_t).transpose(0, 1).contiguous().view(-1, dim_used_len,
                                                                                                    seq_len).transpose(1,
@@ -238,7 +238,7 @@ def test(train_loader, model, input_n=20, output_n=50, is_cuda=False, dim_used=[
             j = eval_frame[k]
             t_3d[k] += torch.mean(torch.norm(
                 targ_p3d[:, j, :, :].contiguous().view(-1, 3) - pred_p3d[:, j, :, :].contiguous().view(-1, 3), 2,
-                1)).cpu().data.numpy()[0] * n
+                1)).cpu().data.numpy() * n
 
         N += n
 
@@ -258,9 +258,8 @@ def val(train_loader, model, is_cuda=False, dim_used=[], dct_n=15):
     for i, (inputs, targets, all_seq) in enumerate(train_loader):
         bt = time.time()
 
-        if is_cuda:
-            inputs = Variable(inputs.cuda()).float()
-            all_seq = Variable(all_seq.cuda(async=True)).float()
+        inputs = inputs.to(MY_DEVICE)
+        all_seq = all_seq.to(MY_DEVICE)
 
         outputs = model(inputs)
 
@@ -269,7 +268,7 @@ def val(train_loader, model, is_cuda=False, dim_used=[], dct_n=15):
         m_err = loss_funcs.mpjpe_error_p3d(outputs, all_seq, dct_n, dim_used)
 
         # update the training loss
-        t_3d.update(m_err.cpu().data.numpy()[0] * n, n)
+        t_3d.update(m_err.cpu().data.numpy() * n, n)
 
         bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i+1, len(train_loader), time.time() - bt,
                                                                          time.time() - st)
