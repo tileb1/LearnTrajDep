@@ -63,7 +63,7 @@ class GC_Block(nn.Module):
         self.bn2 = nn.BatchNorm1d(node_n * in_features)
 
         self.do = nn.Dropout(p_dropout)
-        self.act_f = nn.Tanh()
+        self.act_f = nn.SELU()
 
     def forward(self, x):
         y = self.gc1(x)
