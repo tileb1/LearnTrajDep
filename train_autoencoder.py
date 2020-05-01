@@ -1,5 +1,5 @@
 from utils.opt import Options
-from utils.h36motion import H36motion
+from utils.h36motion3d import H36motion3D
 from torch.utils.data import DataLoader
 from utils.model import TimeAutoencoder
 import torch.optim as optim
@@ -8,11 +8,12 @@ from utils.constants import *
 from progress.bar import Bar
 import time
 from utils.utils import save_model
+from utils.model import IdentityAutoencoder
 
 
 def train_autoencoder(opt, extension=''):
-    train_dataset = H36motion(path_to_data=opt.data_dir, actions='all', input_n=opt.input_n, output_n=opt.output_n,
-                              split=0, sample_rate=opt.sample_rate, autoencoder=lambda x: (1, x))
+    train_dataset = H36motion3D(path_to_data=opt.data_dir, actions='all', input_n=opt.input_n, output_n=opt.output_n,
+                              split=0, sample_rate=opt.sample_rate, autoencoder=IdentityAutoencoder())
 
     train_loader = DataLoader(
         dataset=train_dataset,
@@ -25,7 +26,7 @@ def train_autoencoder(opt, extension=''):
     autoencoder.train()
     autoencoder.to(MY_DEVICE)
     optimizer = optim.Adam(autoencoder.parameters(), lr=opt.lr_autoencoder)
-    loss_function = nn.MSELoss()
+    loss_function = nn.L1Loss()
 
     for epoch in range(50):
         st = time.time()
@@ -72,4 +73,4 @@ def train_autoencoder(opt, extension=''):
 
 if __name__ == "__main__":
     option = Options().parse()
-    train_autoencoder(option, extension='smoothingloss')
+    train_autoencoder(option, extension='MAE35')
