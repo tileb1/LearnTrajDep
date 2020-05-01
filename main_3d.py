@@ -19,6 +19,8 @@ from utils.h36motion3d import H36motion3D
 import utils.model as nnmodel
 import utils.data_utils as data_utils
 from utils.constants import *
+from utils.model import TimeAutoencoder
+
 
 
 def main(opt):
@@ -42,6 +44,9 @@ def main(opt):
 
     model.to(MY_DEVICE)
 
+    time_autoencoder = TimeAutoencoder(opt.input_n + opt.output_n, dct_n)
+    utils.load_model(time_autoencoder, 'autoencoder_35_30_MSE35SELU.pt') # 35 hidden layer (not 30), 35 input
+
     print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
     optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
     if opt.is_load:
@@ -61,13 +66,13 @@ def main(opt):
     # data loading
     print(">>> loading data")
     train_dataset = H36motion3D(path_to_data=opt.data_dir, actions='all', input_n=input_n, output_n=output_n,
-                                split=0, dct_used=dct_n, sample_rate=sample_rate)
+                                split=0, dct_used=dct_n, sample_rate=sample_rate, autoencoder=time_autoencoder)
 
     acts = data_utils.define_actions('all')
     test_data = dict()
     for act in acts:
         test_dataset = H36motion3D(path_to_data=opt.data_dir, actions=act, input_n=input_n, output_n=output_n, split=1,
-                                   sample_rate=sample_rate, dct_used=dct_n)
+                                   sample_rate=sample_rate, dct_used=dct_n, autoencoder=time_autoencoder)
         test_data[act] = DataLoader(
             dataset=test_dataset,
             batch_size=opt.test_batch,
@@ -75,7 +80,7 @@ def main(opt):
             num_workers=opt.job,
             pin_memory=True)
     val_dataset = H36motion3D(path_to_data=opt.data_dir, actions='all', input_n=input_n, output_n=output_n,
-                              split=2, dct_used=dct_n, sample_rate=sample_rate)
+                              split=2, dct_used=dct_n, sample_rate=sample_rate, autoencoder=time_autoencoder)
 
     # load dadasets for training
     train_loader = DataLoader(
@@ -95,6 +100,8 @@ def main(opt):
     print(">>> test data {}".format(test_dataset.__len__()))
     print(">>> validation data {}".format(val_dataset.__len__()))
 
+    time_autoencoder.to(MY_DEVICE)
+
     for epoch in range(start_epoch, opt.epochs):
 
         if (epoch + 1) % opt.lr_decay == 0:
@@ -105,12 +112,12 @@ def main(opt):
         ret_log = np.array([epoch + 1])
         head = np.array(['epoch'])
         # per epoch
-        lr_now, t_l = train(train_loader, model, optimizer, lr_now=lr_now, max_norm=opt.max_norm, is_cuda=is_cuda,
+        lr_now, t_l = train(time_autoencoder, train_loader, model, optimizer, lr_now=lr_now, max_norm=opt.max_norm, is_cuda=is_cuda,
                             dim_used=train_dataset.dim_used, dct_n=dct_n)
         ret_log = np.append(ret_log, [lr_now, t_l])
         head = np.append(head, ['lr', 't_l'])
 
-        v_3d = val(val_loader, model, is_cuda=is_cuda, dim_used=train_dataset.dim_used, dct_n=dct_n)
+        v_3d = val(time_autoencoder, val_loader, model, is_cuda=is_cuda, dim_used=train_dataset.dim_used, dct_n=dct_n)
 
         ret_log = np.append(ret_log, [v_3d])
         head = np.append(head, ['v_3d'])
@@ -118,7 +125,7 @@ def main(opt):
         test_3d_temp = np.array([])
         test_3d_head = np.array([])
         for act in acts:
-            test_l, test_3d = test(test_data[act], model, input_n=input_n, output_n=output_n, is_cuda=is_cuda,
+            test_l, test_3d = test(time_autoencoder, test_data[act], model, input_n=input_n, output_n=output_n, is_cuda=is_cuda,
                                    dim_used=train_dataset.dim_used, dct_n=dct_n)
             # ret_log = np.append(ret_log, test_l)
             ret_log = np.append(ret_log, test_3d)
@@ -152,7 +159,7 @@ def main(opt):
                         file_name=file_name)
 
 
-def train(train_loader, model, optimizer, lr_now=None, max_norm=True, is_cuda=False, dim_used=[], dct_n=15):
+def train(time_autoencoder, train_loader, model, optimizer, lr_now=None, max_norm=True, is_cuda=False, dim_used=[], dct_n=15):
     t_l = utils.AccumLoss()
 
     model.train()
@@ -175,7 +182,7 @@ def train(train_loader, model, optimizer, lr_now=None, max_norm=True, is_cuda=Fa
         outputs = model(inputs)
 
         # backward pass
-        loss = loss_funcs.mpjpe_error_p3d(outputs, all_seq, dct_n, dim_used)
+        loss = loss_funcs.mpjpe_error_p3d(outputs, all_seq, dct_n, dim_used, time_autoencoder)
         loss.backward()
         if max_norm:
             nn.utils.clip_grad_norm_(model.parameters(), max_norm=1)
@@ -191,7 +198,7 @@ def train(train_loader, model, optimizer, lr_now=None, max_norm=True, is_cuda=Fa
     return lr_now, t_l.avg
 
 
-def test(train_loader, model, input_n=20, output_n=50, is_cuda=False, dim_used=[], dct_n=15):
+def test(time_autoencoder, train_loader, model, input_n=20, output_n=50, is_cuda=False, dim_used=[], dct_n=15):
     N = 0
     t_l = 0
     if output_n == 25:
@@ -214,12 +221,14 @@ def test(train_loader, model, input_n=20, output_n=50, is_cuda=False, dim_used=[
         n, seq_len, dim_full_len = all_seq.data.shape
         dim_used_len = len(dim_used)
 
-        _, idct_m = data_utils.get_dct_matrix(seq_len)
-        idct_m = Variable(torch.from_numpy(idct_m)).float().to(MY_DEVICE)
-        outputs_t = outputs.view(-1, dct_n).transpose(0, 1)
-        outputs_3d = torch.matmul(idct_m[:, 0:dct_n], outputs_t).transpose(0, 1).contiguous().view(-1, dim_used_len,
-                                                                                                   seq_len).transpose(1,
-                                                                                                                      2)
+        # _, idct_m = data_utils.get_dct_matrix(seq_len)
+        # idct_m = Variable(torch.from_numpy(idct_m)).float().to(MY_DEVICE)
+        # outputs_t = outputs.view(-1, dct_n).transpose(0, 1)
+        # outputs_3d = torch.matmul(idct_m[:, 0:dct_n], outputs_t).transpose(0, 1).contiguous().view(-1, dim_used_len,
+        #                                                                                            seq_len).transpose(1,
+        #                                                                                                               2)
+        outputs_3d = time_autoencoder.decoder(outputs).transpose(1, 2)
+
         pred_3d = all_seq.clone()
         dim_used = np.array(dim_used)
 
@@ -249,7 +258,7 @@ def test(train_loader, model, input_n=20, output_n=50, is_cuda=False, dim_used=[
     return t_l / N, t_3d / N
 
 
-def val(train_loader, model, is_cuda=False, dim_used=[], dct_n=15):
+def val(time_autoencoder, train_loader, model, is_cuda=False, dim_used=[], dct_n=15):
     t_3d = utils.AccumLoss()
 
     model.eval()
@@ -265,7 +274,7 @@ def val(train_loader, model, is_cuda=False, dim_used=[], dct_n=15):
 
         n, _, _ = all_seq.data.shape
 
-        m_err = loss_funcs.mpjpe_error_p3d(outputs, all_seq, dct_n, dim_used)
+        m_err = loss_funcs.mpjpe_error_p3d(outputs, all_seq, dct_n, dim_used, time_autoencoder)
 
         # update the training loss
         t_3d.update(m_err.cpu().data.numpy() * n, n)

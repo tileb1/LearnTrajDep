@@ -197,7 +197,7 @@ def mpjpe_error_cmu(outputs, all_seq, input_n, dim_used, dct_n):
     return mean_3d_err
 
 
-def mpjpe_error_p3d(outputs, all_seq, dct_n, dim_used):
+def mpjpe_error_p3d(outputs, all_seq, dct_n, dim_used, autoencoder):
     """
 
     :param outputs:n*66*dct_n
@@ -210,12 +210,14 @@ def mpjpe_error_p3d(outputs, all_seq, dct_n, dim_used):
     dim_used = np.array(dim_used)
     dim_used_len = len(dim_used)
 
-    _, idct_m = data_utils.get_dct_matrix(seq_len)
-    idct_m = torch.from_numpy(idct_m).float().to(MY_DEVICE)
-    outputs_t = outputs.view(-1, dct_n).transpose(0, 1)
-    outputs_p3d = torch.matmul(idct_m[:, 0:dct_n], outputs_t).transpose(0, 1).contiguous().view(-1, dim_used_len,
-                                                                                                seq_len).transpose(1,
-                                                                                                                   2)
+    # _, idct_m = data_utils.get_dct_matrix(seq_len)
+    # idct_m = torch.from_numpy(idct_m).float().to(MY_DEVICE)
+    # outputs_t = outputs.view(-1, dct_n).transpose(0, 1)
+    # outputs_p3d = torch.matmul(idct_m[:, 0:dct_n], outputs_t).transpose(0, 1).contiguous().view(-1, dim_used_len,
+    #                                                                                             seq_len).transpose(1,
+    #                                                                                                                2)
+    outputs_p3d = autoencoder.decoder(outputs).transpose(1, 2)
+
     pred_3d = outputs_p3d.contiguous().view(-1, dim_used_len).view(-1, 3)
     targ_3d = all_seq[:, :, dim_used].contiguous().view(-1, dim_used_len).view(-1, 3)
 

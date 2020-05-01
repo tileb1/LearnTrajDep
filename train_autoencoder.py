@@ -26,7 +26,7 @@ def train_autoencoder(opt, extension=''):
     autoencoder.train()
     autoencoder.to(MY_DEVICE)
     optimizer = optim.Adam(autoencoder.parameters(), lr=opt.lr_autoencoder)
-    loss_function = nn.L1Loss()
+    loss_function = nn.MSELoss()
 
     for epoch in range(50):
         st = time.time()
@@ -73,4 +73,4 @@ def train_autoencoder(opt, extension=''):
 
 if __name__ == "__main__":
     option = Options().parse()
-    train_autoencoder(option, extension='MAE35')
+    train_autoencoder(option, extension='MSE35SELU')
