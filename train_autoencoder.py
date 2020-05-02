@@ -73,4 +73,4 @@ def train_autoencoder(opt, extension=''):
 
 if __name__ == "__main__":
     option = Options().parse()
-    train_autoencoder(option, extension='MSE35SELU')
+    train_autoencoder(option, extension='MSE30SELU')

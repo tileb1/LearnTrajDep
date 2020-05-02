@@ -130,32 +130,32 @@ class GCN(nn.Module):
 
 
 class TimeAutoencoder(nn.Module):
-    # def __init__(self, input_size, hidden_size, activation=nn.Tanh()):
-    #     super().__init__()
-    #     self.encoder = nn.Sequential(
-    #         nn.Linear(input_size, 32),
-    #         activation,
-    #         nn.Linear(32, 30),
-    #         activation,
-    #         nn.Linear(30, hidden_size))
-    #
-    #     self.decoder = nn.Sequential(
-    #         nn.Linear(hidden_size, 30),
-    #         activation,
-    #         nn.Linear(30, 32),
-    #         activation,
-    #         nn.Linear(32, input_size))
     def __init__(self, input_size, hidden_size, activation=nn.SELU()):
         super().__init__()
         self.encoder = nn.Sequential(
-            nn.Linear(input_size, input_size),
+            nn.Linear(input_size, 32),
             activation,
-            nn.Linear(input_size, input_size))
+            nn.Linear(32, 30),
+            activation,
+            nn.Linear(30, hidden_size))
 
         self.decoder = nn.Sequential(
-            nn.Linear(input_size, input_size),
+            nn.Linear(hidden_size, 30),
             activation,
-            nn.Linear(input_size, input_size))
+            nn.Linear(30, 32),
+            activation,
+            nn.Linear(32, input_size))
+    # def __init__(self, input_size, hidden_size, activation=nn.SELU()):
+    #     super().__init__()
+    #     self.encoder = nn.Sequential(
+    #         nn.Linear(input_size, input_size),
+    #         activation,
+    #         nn.Linear(input_size, input_size))
+    #
+    #     self.decoder = nn.Sequential(
+    #         nn.Linear(input_size, input_size),
+    #         activation,
+    #         nn.Linear(input_size, input_size))
 
     def forward(self, x):
         embedding = self.encoder(x)
