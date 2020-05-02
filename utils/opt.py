@@ -38,10 +38,10 @@ class Options:
         self.parser.add_argument('--lr_decay', type=int, default=2, help='every lr_decay epoch do lr decay')
         self.parser.add_argument('--lr_gamma', type=float, default=0.96)
         self.parser.add_argument('--input_n', type=int, default=10, help='observed seq length')
-        self.parser.add_argument('--output_n', type=int, default=50, help='future seq length')
+        self.parser.add_argument('--output_n', type=int, default=25, help='future seq length')
         self.parser.add_argument('--dct_n', type=int, default=35, help='number of DCT coeff. preserved for 3D')
         self.parser.add_argument('--actions', type=str, default='all', help='path to save checkpoint')
-        self.parser.add_argument('--epochs', type=int, default=25)
+        self.parser.add_argument('--epochs', type=int, default=50)
         self.parser.add_argument('--dropout', type=float, default=0.5,
                                  help='dropout probability, 1.0 to make no dropout')
         self.parser.add_argument('--train_batch', type=int, default=16)
