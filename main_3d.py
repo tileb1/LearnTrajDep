@@ -45,7 +45,7 @@ def main(opt):
     model.to(MY_DEVICE)
 
     time_autoencoder = TimeAutoencoder(opt.input_n + opt.output_n, dct_n)
-    utils.load_model(time_autoencoder, 'autoencoder_35_30_MSE35SELU.pt') # 35 hidden layer (not 30), 35 input
+    utils.load_model(time_autoencoder, 'autoencoder_35_30_MSE30SELU.pt') # 35 hidden layer (not 30), 35 input
 
     print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
     optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
