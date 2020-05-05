@@ -45,7 +45,7 @@ class Options:
         self.parser.add_argument('--dropout', type=float, default=0.5,
                                  help='dropout probability, 1.0 to make no dropout')
         self.parser.add_argument('--train_batch', type=int, default=16)
-        self.parser.add_argument('--test_batch', type=int, default=128)
+        self.parser.add_argument('--test_batch', type=int, default=16)
         self.parser.add_argument('--job', type=int, default=10, help='subprocesses to use for data loading')
         self.parser.add_argument('--is_load', dest='is_load', action='store_true', help='wether to load existing model')
         self.parser.add_argument('--sample_rate', type=int, default=2, help='frame sampling rate')

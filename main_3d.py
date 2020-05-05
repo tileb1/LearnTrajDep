@@ -201,86 +201,88 @@ def train(time_autoencoder, train_loader, model, optimizer, lr_now=None, max_nor
 
 
 def test(time_autoencoder, train_loader, model, input_n=20, output_n=50, is_cuda=False, dim_used=[], dct_n=15):
-    N = 0
-    t_l = 0
-    if output_n == 25:
-        eval_frame = [1, 3, 7, 9, 13, 24]
-    elif output_n == 10:
-        eval_frame = [1, 3, 7, 9]
-    t_3d = np.zeros(len(eval_frame))
+    with torch.no_grad():
+        N = 0
+        t_l = 0
+        if output_n == 25:
+            eval_frame = [1, 3, 7, 9, 13, 24]
+        elif output_n == 10:
+            eval_frame = [1, 3, 7, 9]
+        t_3d = np.zeros(len(eval_frame))
 
-    model.eval()
-    st = time.time()
-    bar = Bar('>>>', fill='>', max=len(train_loader))
-    for i, (inputs, targets, all_seq, inputs_time) in enumerate(train_loader):
-        bt = time.time()
+        model.eval()
+        st = time.time()
+        bar = Bar('>>>', fill='>', max=len(train_loader))
+        for i, (inputs, targets, all_seq, inputs_time) in enumerate(train_loader):
+            bt = time.time()
 
-        inputs = inputs.to(MY_DEVICE)
-        all_seq = all_seq.to(MY_DEVICE)
-        inputs_time = inputs_time.to(MY_DEVICE)
+            inputs = inputs.to(MY_DEVICE)
+            all_seq = all_seq.to(MY_DEVICE)
+            inputs_time = inputs_time.to(MY_DEVICE)
 
-        outputs = model(inputs, inputs_time)
+            outputs = model(inputs, inputs_time)
 
-        n, seq_len, dim_full_len = all_seq.data.shape
+            n, seq_len, dim_full_len = all_seq.data.shape
 
-        outputs_3d = time_autoencoder.decoder(outputs).transpose(1, 2)
+            outputs_3d = time_autoencoder.decoder(outputs).transpose(1, 2)
 
-        pred_3d = all_seq.clone()
-        dim_used = np.array(dim_used)
+            pred_3d = all_seq.clone()
+            dim_used = np.array(dim_used)
 
-        # joints at same loc
-        joint_to_ignore = np.array([16, 20, 23, 24, 28, 31])  # joints not in dim_used
-        index_to_ignore = np.concatenate((joint_to_ignore * 3, joint_to_ignore * 3 + 1, joint_to_ignore * 3 + 2))
-        joint_equal = np.array([13, 19, 22, 13, 27, 30])  # joints in dim_used
-        index_to_equal = np.concatenate((joint_equal * 3, joint_equal * 3 + 1, joint_equal * 3 + 2))
+            # joints at same loc
+            joint_to_ignore = np.array([16, 20, 23, 24, 28, 31])  # joints not in dim_used
+            index_to_ignore = np.concatenate((joint_to_ignore * 3, joint_to_ignore * 3 + 1, joint_to_ignore * 3 + 2))
+            joint_equal = np.array([13, 19, 22, 13, 27, 30])  # joints in dim_used
+            index_to_equal = np.concatenate((joint_equal * 3, joint_equal * 3 + 1, joint_equal * 3 + 2))
 
-        pred_3d[:, :, dim_used] = outputs_3d
-        pred_3d[:, :, index_to_ignore] = pred_3d[:, :, index_to_equal]
+            pred_3d[:, :, dim_used] = outputs_3d
+            pred_3d[:, :, index_to_ignore] = pred_3d[:, :, index_to_equal]
 
-        pred_p3d = pred_3d.contiguous().view(n, seq_len, -1, 3)[:, input_n:, :, :]
-        targ_p3d = all_seq.contiguous().view(n, seq_len, -1, 3)[:, input_n:, :, :]
+            pred_p3d = pred_3d.contiguous().view(n, seq_len, -1, 3)[:, input_n:, :, :]
+            targ_p3d = all_seq.contiguous().view(n, seq_len, -1, 3)[:, input_n:, :, :]
 
-        for k in np.arange(0, len(eval_frame)):
-            j = eval_frame[k]
-            diff = targ_p3d[:, j, :, :].contiguous().view(-1, 3) - pred_p3d[:, j, :, :].contiguous().view(-1, 3)
-            t_3d[k] += torch.mean(torch.norm(diff, 2, 1)).cpu().data.numpy() * n
+            for k in np.arange(0, len(eval_frame)):
+                j = eval_frame[k]
+                diff = targ_p3d[:, j, :, :].contiguous().view(-1, 3) - pred_p3d[:, j, :, :].contiguous().view(-1, 3)
+                t_3d[k] += torch.mean(torch.norm(diff, 2, 1)).cpu().data.numpy() * n
 
-        N += n
+            N += n
 
-        bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i+1, len(train_loader), time.time() - bt,
-                                                                         time.time() - st)
-        bar.next()
-    bar.finish()
-    return t_l / N, t_3d / N
+            bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i+1, len(train_loader), time.time() - bt,
+                                                                             time.time() - st)
+            bar.next()
+        bar.finish()
+        return t_l / N, t_3d / N
 
 
 def val(time_autoencoder, train_loader, model, is_cuda=False, dim_used=[], dct_n=15):
-    t_3d = utils.AccumLoss()
+    with torch.no_grad():
+        t_3d = utils.AccumLoss()
 
-    model.eval()
-    st = time.time()
-    bar = Bar('>>>', fill='>', max=len(train_loader))
-    for i, (inputs, targets, all_seq, inputs_time) in enumerate(train_loader):
-        bt = time.time()
+        model.eval()
+        st = time.time()
+        bar = Bar('>>>', fill='>', max=len(train_loader))
+        for i, (inputs, targets, all_seq, inputs_time) in enumerate(train_loader):
+            bt = time.time()
 
-        inputs = inputs.to(MY_DEVICE)
-        all_seq = all_seq.to(MY_DEVICE)
-        inputs_time = inputs_time.to(MY_DEVICE)
+            inputs = inputs.to(MY_DEVICE)
+            all_seq = all_seq.to(MY_DEVICE)
+            inputs_time = inputs_time.to(MY_DEVICE)
 
-        outputs = model(inputs, inputs_time)
+            outputs = model(inputs, inputs_time)
 
-        n, _, _ = all_seq.data.shape
+            n, _, _ = all_seq.data.shape
 
-        m_err = loss_funcs.mpjpe_error_p3d(outputs, all_seq, dct_n, dim_used, time_autoencoder)
+            m_err = loss_funcs.mpjpe_error_p3d(outputs, all_seq, dct_n, dim_used, time_autoencoder)
 
-        # update the training loss
-        t_3d.update(m_err.cpu().data.numpy() * n, n)
+            # update the training loss
+            t_3d.update(m_err.cpu().data.numpy() * n, n)
 
-        bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i+1, len(train_loader), time.time() - bt,
-                                                                         time.time() - st)
-        bar.next()
-    bar.finish()
-    return t_3d.avg
+            bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i+1, len(train_loader), time.time() - bt,
+                                                                             time.time() - st)
+            bar.next()
+        bar.finish()
+        return t_3d.avg
 
 
 if __name__ == "__main__":
