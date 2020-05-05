@@ -46,6 +46,7 @@ def main(opt):
 
     time_autoencoder = TimeAutoencoder(opt.input_n + opt.output_n, dct_n)
     utils.load_model(time_autoencoder, 'autoencoder_35_30_MSE30SELU.pt')
+    time_autoencoder.decoder = nn.Identity()
 
     print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
     optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
@@ -165,7 +166,7 @@ def train(time_autoencoder, train_loader, model, optimizer, lr_now=None, max_nor
     model.train()
     st = time.time()
     bar = Bar('>>>', fill='>', max=len(train_loader))
-    for i, (inputs, targets, all_seq) in enumerate(train_loader):
+    for i, (inputs, targets, all_seq, inputs_time) in enumerate(train_loader):
 
         batch_size = inputs.shape[0]
         if batch_size == 1:
@@ -176,10 +177,11 @@ def train(time_autoencoder, train_loader, model, optimizer, lr_now=None, max_nor
         # transfer inputs to GPU if needed
         inputs = inputs.to(MY_DEVICE)
         all_seq = all_seq.to(MY_DEVICE)
+        inputs_time = inputs_time.to(MY_DEVICE)
 
         # forward pass
         optimizer.zero_grad()
-        outputs = model(inputs)
+        outputs = model(inputs, inputs_time)
 
         # backward pass
         loss = loss_funcs.mpjpe_error_p3d(outputs, all_seq, dct_n, dim_used, time_autoencoder)
@@ -210,13 +212,14 @@ def test(time_autoencoder, train_loader, model, input_n=20, output_n=50, is_cuda
     model.eval()
     st = time.time()
     bar = Bar('>>>', fill='>', max=len(train_loader))
-    for i, (inputs, targets, all_seq) in enumerate(train_loader):
+    for i, (inputs, targets, all_seq, inputs_time) in enumerate(train_loader):
         bt = time.time()
 
         inputs = inputs.to(MY_DEVICE)
         all_seq = all_seq.to(MY_DEVICE)
+        inputs_time = inputs_time.to(MY_DEVICE)
 
-        outputs = model(inputs)
+        outputs = model(inputs, inputs_time)
 
         n, seq_len, dim_full_len = all_seq.data.shape
 
@@ -257,13 +260,14 @@ def val(time_autoencoder, train_loader, model, is_cuda=False, dim_used=[], dct_n
     model.eval()
     st = time.time()
     bar = Bar('>>>', fill='>', max=len(train_loader))
-    for i, (inputs, targets, all_seq) in enumerate(train_loader):
+    for i, (inputs, targets, all_seq, inputs_time) in enumerate(train_loader):
         bt = time.time()
 
         inputs = inputs.to(MY_DEVICE)
         all_seq = all_seq.to(MY_DEVICE)
+        inputs_time = inputs_time.to(MY_DEVICE)
 
-        outputs = model(inputs)
+        outputs = model(inputs, inputs_time)
 
         n, _, _ = all_seq.data.shape
 

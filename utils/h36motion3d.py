@@ -44,6 +44,7 @@ class H36motion3D(Dataset):
 
         # Pad with last seen skeleton
         tmp[:, :, input_n:] = tmp[:, :, input_n-1, None]
+        self.all_seqs_padded = tmp
         self.all_seqs_encoded_padded = autoencoder(tmp)[1]
 
     def __len__(self):
@@ -51,4 +52,4 @@ class H36motion3D(Dataset):
 
     def __getitem__(self, item):
         return self.all_seqs_encoded_padded[item], self.all_seqs_encoded[item], \
-               self.all_seqs[item]
+               self.all_seqs[item], self.all_seqs_padded[item]

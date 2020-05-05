@@ -108,12 +108,12 @@ class GCN(nn.Module):
 
         self.gcbs = nn.ModuleList(self.gcbs)
 
-        self.gc7 = GraphConvolution(hidden_feature, input_feature, node_n=node_n)
+        self.gc7 = GraphConvolution(hidden_feature, 35, node_n=node_n)
 
         self.do = nn.Dropout(p_dropout)
         self.act_f = nn.Tanh()
 
-    def forward(self, x):
+    def forward(self, x, original=None):
         y = self.gc1(x)
         b, n, f = y.shape
         y = self.bn1(y.view(b, -1)).view(b, n, f)
@@ -124,9 +124,11 @@ class GCN(nn.Module):
             y = self.gcbs[i](y)
 
         y = self.gc7(y)
-        y = y + x
+        # y = y + x
 
-        return y
+        if original is None:
+            return y
+        return y + original
 
 
 class TimeAutoencoder(nn.Module):
