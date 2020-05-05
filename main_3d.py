@@ -45,7 +45,7 @@ def main(opt):
     model.to(MY_DEVICE)
 
     time_autoencoder = TimeAutoencoder(opt.input_n + opt.output_n, dct_n)
-    utils.load_model(time_autoencoder, 'autoencoder_35_30_MSE30SELU.pt') # 35 hidden layer (not 30), 35 input
+    utils.load_model(time_autoencoder, 'autoencoder_35_30_MSE30SELU.pt')
 
     print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
     optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
@@ -219,35 +219,28 @@ def test(time_autoencoder, train_loader, model, input_n=20, output_n=50, is_cuda
         outputs = model(inputs)
 
         n, seq_len, dim_full_len = all_seq.data.shape
-        dim_used_len = len(dim_used)
 
-        # _, idct_m = data_utils.get_dct_matrix(seq_len)
-        # idct_m = Variable(torch.from_numpy(idct_m)).float().to(MY_DEVICE)
-        # outputs_t = outputs.view(-1, dct_n).transpose(0, 1)
-        # outputs_3d = torch.matmul(idct_m[:, 0:dct_n], outputs_t).transpose(0, 1).contiguous().view(-1, dim_used_len,
-        #                                                                                            seq_len).transpose(1,
-        #                                                                                                               2)
         outputs_3d = time_autoencoder.decoder(outputs).transpose(1, 2)
 
         pred_3d = all_seq.clone()
         dim_used = np.array(dim_used)
 
         # joints at same loc
-        joint_to_ignore = np.array([16, 20, 23, 24, 28, 31])
+        joint_to_ignore = np.array([16, 20, 23, 24, 28, 31])  # joints not in dim_used
         index_to_ignore = np.concatenate((joint_to_ignore * 3, joint_to_ignore * 3 + 1, joint_to_ignore * 3 + 2))
-        joint_equal = np.array([13, 19, 22, 13, 27, 30])
+        joint_equal = np.array([13, 19, 22, 13, 27, 30])  # joints in dim_used
         index_to_equal = np.concatenate((joint_equal * 3, joint_equal * 3 + 1, joint_equal * 3 + 2))
 
         pred_3d[:, :, dim_used] = outputs_3d
         pred_3d[:, :, index_to_ignore] = pred_3d[:, :, index_to_equal]
+
         pred_p3d = pred_3d.contiguous().view(n, seq_len, -1, 3)[:, input_n:, :, :]
         targ_p3d = all_seq.contiguous().view(n, seq_len, -1, 3)[:, input_n:, :, :]
 
         for k in np.arange(0, len(eval_frame)):
             j = eval_frame[k]
-            t_3d[k] += torch.mean(torch.norm(
-                targ_p3d[:, j, :, :].contiguous().view(-1, 3) - pred_p3d[:, j, :, :].contiguous().view(-1, 3), 2,
-                1)).cpu().data.numpy() * n
+            diff = targ_p3d[:, j, :, :].contiguous().view(-1, 3) - pred_p3d[:, j, :, :].contiguous().view(-1, 3)
+            t_3d[k] += torch.mean(torch.norm(diff, 2, 1)).cpu().data.numpy() * n
 
         N += n
 
