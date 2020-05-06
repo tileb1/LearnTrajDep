@@ -74,4 +74,4 @@ def train_autoencoder(opt, extension=''):
 
 if __name__ == "__main__":
     option = Options().parse()
-    train_autoencoder(option, extension='25to20')
+    train_autoencoder(option, extension='')
