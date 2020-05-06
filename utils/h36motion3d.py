@@ -47,8 +47,8 @@ class H36motion3D(Dataset):
         # self.all_seqs_padded = tmp
         # self.all_seqs_encoded_padded = autoencoder(tmp)[1]
 
-        self.input = all_seqs.transpose(2, 1)[:, :, input_n:]
-        self.output = all_seqs.transpose(2, 1)[:, :, :input_n]
+        self.input = all_seqs.transpose(2, 1)[:, :, :input_n]
+        self.output = all_seqs.transpose(2, 1)[:, :, input_n:]
 
     def __len__(self):
         return self.input.shape[0]
