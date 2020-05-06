@@ -38,18 +38,20 @@ class H36motion3D(Dataset):
         # (nb_total_seq, len_seq, nb_joints)
         all_seqs = torch.from_numpy(all_seqs[:, :, dim_used]).float()
 
-        # (nb_total_seq, nb_joints, hidden_dim)
-        self.all_seqs_encoded = autoencoder(all_seqs.transpose(2, 1))[1]
-        tmp = all_seqs.transpose(2, 1).clone()
+        # # (nb_total_seq, nb_joints, hidden_dim)
+        # self.all_seqs_encoded = autoencoder(all_seqs.transpose(2, 1))[1]
+        # tmp = all_seqs.transpose(2, 1).clone()
+        #
+        # # Pad with last seen skeleton
+        # tmp[:, :, input_n:] = tmp[:, :, input_n-1, None]
+        # self.all_seqs_padded = tmp
+        # self.all_seqs_encoded_padded = autoencoder(tmp)[1]
 
-        # Pad with last seen skeleton
-        tmp[:, :, input_n:] = tmp[:, :, input_n-1, None]
-        self.all_seqs_padded = tmp
-        self.all_seqs_encoded_padded = autoencoder(tmp)[1]
+        self.input = all_seqs.transpose(2, 1)[:, :, input_n:]
+        self.output = all_seqs.transpose(2, 1)[:, :, :input_n]
 
     def __len__(self):
-        return self.all_seqs_encoded.shape[0]
+        return self.input.shape[0]
 
     def __getitem__(self, item):
-        return self.all_seqs_encoded_padded[item], self.all_seqs_encoded[item], \
-               self.all_seqs[item], self.all_seqs_padded[item]
+        return self.input[item], self.output[item]

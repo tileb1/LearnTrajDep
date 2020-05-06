@@ -22,7 +22,7 @@ def train_autoencoder(opt, extension=''):
         num_workers=opt.job,
         pin_memory=True)
 
-    autoencoder = TimeAutoencoder(opt.input_n + opt.output_n, opt.dct_n)
+    autoencoder = TimeAutoencoder(opt.input_n, opt.input_n)
     autoencoder.train()
     autoencoder.to(MY_DEVICE)
     optimizer = optim.Adam(autoencoder.parameters(), lr=opt.lr_autoencoder)
@@ -32,19 +32,20 @@ def train_autoencoder(opt, extension=''):
         st = time.time()
         bar = Bar('Epoch {}:'.format(epoch), fill='>', max=len(train_loader))
         average_epoch_loss = 0
-        for i, (padded_seq, true_seq, _) in enumerate(train_loader):
+        for i, (input_seq, output_seq) in enumerate(train_loader):
             bt = time.time()
-            padded_seq = padded_seq.to(MY_DEVICE)
-            true_seq = true_seq.to(MY_DEVICE)
+            # padded_seq = padded_seq.to(MY_DEVICE)
+            # true_seq = true_seq.to(MY_DEVICE)
+            true_seq = input_seq.to(MY_DEVICE)
 
             # forward pass
             optimizer.zero_grad()
             out_true, _ = autoencoder(true_seq)
-            out_padded, _ = autoencoder(padded_seq)
+            # out_padded, _ = autoencoder(padded_seq)
 
             # backward pass
             loss = loss_function(out_true, true_seq)  # reconstruction loss
-            loss += loss_function(out_padded, padded_seq)  # reconstruction loss
+            # loss += loss_function(out_padded, padded_seq)  # reconstruction loss
 
             # loss += 0.5 * loss_function(out_true[:, :, 1:], true_seq[:, :, :-1])  # smoothing loss
             # loss += 0.5 * loss_function(out_true[:, :, :-1], true_seq[:, :, 1:])  # smoothing loss
@@ -73,4 +74,4 @@ def train_autoencoder(opt, extension=''):
 
 if __name__ == "__main__":
     option = Options().parse()
-    train_autoencoder(option, extension='MSE30SELU')
+    train_autoencoder(option, extension='25to20')
