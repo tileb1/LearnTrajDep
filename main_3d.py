@@ -39,14 +39,14 @@ def main(opt):
     dct_n = opt.dct_n
     sample_rate = opt.sample_rate
 
-    model = nnmodel.GCN(input_feature=dct_n, hidden_feature=opt.linear_size, p_dropout=opt.dropout,
+    model = nnmodel.GCN(input_feature=opt.embedding_size + opt.nb_raw, hidden_feature=opt.linear_size, p_dropout=opt.dropout,
                         num_stage=opt.num_stage, node_n=66)
 
     model.to(MY_DEVICE)
 
-    time_autoencoder = TimeAutoencoder(opt.input_n + opt.output_n, dct_n)
-    utils.load_model(time_autoencoder, 'autoencoder_35_30_MSE30SELU.pt')
-    time_autoencoder.decoder = nn.Identity()
+    time_autoencoder = TimeAutoencoder(opt.input_n, opt.input_n-5)
+    utils.load_model(time_autoencoder, 'autoencoder_50_30_25to20.pt')
+    # time_autoencoder.decoder = nn.Identity()
 
     print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
     optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
@@ -113,12 +113,12 @@ def main(opt):
         ret_log = np.array([epoch + 1])
         head = np.array(['epoch'])
         # per epoch
-        lr_now, t_l = train(time_autoencoder, train_loader, model, optimizer, lr_now=lr_now, max_norm=opt.max_norm, is_cuda=is_cuda,
-                            dim_used=train_dataset.dim_used, dct_n=dct_n, opt=opt)
+        lr_now, t_l = train(time_autoencoder, train_loader, model, optimizer, lr_now=lr_now, max_norm=opt.max_norm,
+                            dim_used=train_dataset.dim_used, opt=opt)
         ret_log = np.append(ret_log, [lr_now, t_l])
         head = np.append(head, ['lr', 't_l'])
 
-        v_3d = val(time_autoencoder, val_loader, model, is_cuda=is_cuda, dim_used=train_dataset.dim_used, dct_n=dct_n, opt=opt)
+        v_3d = val(time_autoencoder, val_loader, model, dim_used=train_dataset.dim_used, opt=opt)
 
         ret_log = np.append(ret_log, [v_3d])
         head = np.append(head, ['v_3d'])
@@ -126,8 +126,8 @@ def main(opt):
         test_3d_temp = np.array([])
         test_3d_head = np.array([])
         for act in acts:
-            test_l, test_3d = test(time_autoencoder, test_data[act], model, input_n=input_n, output_n=output_n, is_cuda=is_cuda,
-                                   dim_used=train_dataset.dim_used, dct_n=dct_n, opt=opt)
+            test_l, test_3d = test(time_autoencoder, test_data[act], model, output_n=output_n,
+                                   dim_used=train_dataset.dim_used, opt=opt)
             # ret_log = np.append(ret_log, test_l)
             ret_log = np.append(ret_log, test_3d)
             head = np.append(head,
@@ -179,9 +179,9 @@ def train(time_autoencoder, train_loader, model, optimizer, lr_now=None, max_nor
         target = target.to(MY_DEVICE)
 
         # Concatenate embeddings with raw inputs
-        inputs = torch.zeros(batch_size, nb_joints, time_len_input+opt.nb_raw).to(MY_DEVICE)
-        inputs[:, :, :time_len_input] = time_autoencoder(raw_inputs)
-        inputs[:, :, time_len_input:] = raw_inputs[:, :, :-opt.nb_raw-1]
+        inputs = torch.zeros(batch_size, nb_joints, opt.embedding_size+opt.nb_raw).float().to(MY_DEVICE)
+        inputs[:, :, :opt.embedding_size] = time_autoencoder(raw_inputs)[1]
+        inputs[:, :, opt.embedding_size:] = raw_inputs[:, :, -opt.nb_raw:]
 
         # forward pass
         optimizer.zero_grad()
@@ -205,7 +205,7 @@ def train(time_autoencoder, train_loader, model, optimizer, lr_now=None, max_nor
     return lr_now, t_l.avg
 
 
-def test(time_autoencoder, train_loader, model, input_n=20, output_n=50, is_cuda=False, dim_used=[], dct_n=15, opt=None):
+def test(time_autoencoder, train_loader, model, output_n=50, dim_used=[], opt=None):
     with torch.no_grad():
         N = 0
         t_l = 0
@@ -228,9 +228,9 @@ def test(time_autoencoder, train_loader, model, input_n=20, output_n=50, is_cuda
             target = target.to(MY_DEVICE)
 
             # Concatenate embeddings with raw inputs
-            inputs = torch.zeros(batch_size, nb_joints, time_len_input + opt.nb_raw).to(MY_DEVICE)
-            inputs[:, :, :time_len_input] = time_autoencoder(raw_inputs)
-            inputs[:, :, time_len_input:] = raw_inputs[:, :, :-opt.nb_raw - 1]
+            inputs = torch.zeros(batch_size, nb_joints, opt.embedding_size + opt.nb_raw).float().to(MY_DEVICE)
+            inputs[:, :, :opt.embedding_size] = time_autoencoder(raw_inputs)[1]
+            inputs[:, :, opt.embedding_size:] = raw_inputs[:, :, -opt.nb_raw:]
 
             outputs = model(inputs)
 
@@ -264,7 +264,7 @@ def test(time_autoencoder, train_loader, model, input_n=20, output_n=50, is_cuda
         return t_l / N, t_3d / N
 
 
-def val(time_autoencoder, train_loader, model, is_cuda=False, dim_used=[], dct_n=15, opt=None):
+def val(time_autoencoder, train_loader, model, dim_used=[], opt=None):
     with torch.no_grad():
         t_3d = utils.AccumLoss()
 
@@ -281,9 +281,9 @@ def val(time_autoencoder, train_loader, model, is_cuda=False, dim_used=[], dct_n
             target = target.to(MY_DEVICE)
 
             # Concatenate embeddings with raw inputs
-            inputs = torch.zeros(batch_size, nb_joints, time_len_input + opt.nb_raw).to(MY_DEVICE)
-            inputs[:, :, :time_len_input] = time_autoencoder(raw_inputs)
-            inputs[:, :, time_len_input:] = raw_inputs[:, :, :-opt.nb_raw - 1]
+            inputs = torch.zeros(batch_size, nb_joints, opt.embedding_size + opt.nb_raw).float().to(MY_DEVICE)
+            inputs[:, :, :opt.embedding_size] = time_autoencoder(raw_inputs)[1]
+            inputs[:, :, opt.embedding_size:] = raw_inputs[:, :, -opt.nb_raw:]
 
             outputs = model(inputs)
 
