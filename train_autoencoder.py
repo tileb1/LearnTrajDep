@@ -40,6 +40,7 @@ def train_autoencoder(opt, extension=''):
 
             # forward pass
             optimizer.zero_grad()
+            print(true_seq.shape)
             out_true, _ = autoencoder(true_seq)
             # out_padded, _ = autoencoder(padded_seq)
 

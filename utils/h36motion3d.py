@@ -18,6 +18,7 @@ class H36motion3D(Dataset):
         :param split: 0 train, 1 testing, 2 validation
         :param sample_rate:
         """
+        print(input_n)
         self.path_to_data = path_to_data
         self.split = split
         self.dct_used = dct_used
