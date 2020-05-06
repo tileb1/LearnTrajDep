@@ -114,7 +114,7 @@ def main(opt):
         head = np.array(['epoch'])
         # per epoch
         lr_now, t_l = train(time_autoencoder, train_loader, model, optimizer, lr_now=lr_now, max_norm=opt.max_norm, is_cuda=is_cuda,
-                            dim_used=train_dataset.dim_used, dct_n=dct_n)
+                            dim_used=train_dataset.dim_used, dct_n=dct_n, opt=opt)
         ret_log = np.append(ret_log, [lr_now, t_l])
         head = np.append(head, ['lr', 't_l'])
 
@@ -160,31 +160,35 @@ def main(opt):
                         file_name=file_name)
 
 
-def train(time_autoencoder, train_loader, model, optimizer, lr_now=None, max_norm=True, is_cuda=False, dim_used=[], dct_n=15):
+def train(time_autoencoder, train_loader, model, optimizer, lr_now=None, max_norm=True, dim_used=[], opt=None):
     t_l = utils.AccumLoss()
 
     model.train()
     st = time.time()
     bar = Bar('>>>', fill='>', max=len(train_loader))
-    for i, (inputs, targets, all_seq, inputs_time) in enumerate(train_loader):
+    for i, (raw_inputs, target, _) in enumerate(train_loader):
 
-        batch_size = inputs.shape[0]
+        (batch_size, nb_joints, time_len_input) = raw_inputs.shape
         if batch_size == 1:
             continue
 
         bt = time.time()
 
         # transfer inputs to GPU if needed
-        inputs = inputs.to(MY_DEVICE)
-        all_seq = all_seq.to(MY_DEVICE)
-        inputs_time = inputs_time.to(MY_DEVICE)
+        raw_inputs = raw_inputs.to(MY_DEVICE)
+        target = target.to(MY_DEVICE)
+
+        # Concatenate embeddings with raw inputs
+        inputs = torch.zeros(batch_size, nb_joints, time_len_input+opt.nb_raw).to(MY_DEVICE)
+        inputs[:, :, :time_len_input] = time_autoencoder(raw_inputs)
+        inputs[:, :, time_len_input:] = raw_inputs[:, :, :-opt.nb_raw-1]
 
         # forward pass
         optimizer.zero_grad()
-        outputs = model(inputs, inputs_time)
+        outputs = model(inputs)
 
         # backward pass
-        loss = loss_funcs.mpjpe_error_p3d(outputs, all_seq, dct_n, dim_used, time_autoencoder)
+        loss = loss_funcs.mpjpe_error_p3d_new(outputs, target, dim_used)
         loss.backward()
         if max_norm:
             nn.utils.clip_grad_norm_(model.parameters(), max_norm=1)

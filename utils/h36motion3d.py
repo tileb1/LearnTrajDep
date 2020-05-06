@@ -32,7 +32,7 @@ class H36motion3D(Dataset):
         subjs = subs[split]
         all_seqs, dim_ignore, dim_used = data_utils.load_data_3d(path_to_data, subjs, acts, sample_rate,
                                                                  input_n + output_n)
-        self.all_seqs = all_seqs
+        self.all_seqs = all_seqs[:, input_n:]
         self.dim_used = dim_used
 
         # (nb_total_seq, len_seq, nb_joints)
@@ -54,4 +54,4 @@ class H36motion3D(Dataset):
         return self.input.shape[0]
 
     def __getitem__(self, item):
-        return self.input[item], self.output[item]
+        return self.input[item], self.output[item], self.all_seqs[item]

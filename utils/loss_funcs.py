@@ -226,6 +226,26 @@ def mpjpe_error_p3d(outputs, all_seq, dct_n, dim_used, autoencoder):
     return mean_3d_err
 
 
+def mpjpe_error_p3d_new(outputs, target, dim_used):
+    """
+
+    :param outputs:n*66*dct_n
+    :param all_seq:
+    :param dct_n:
+    :param dim_used:
+    :return:
+    """
+    dim_used_len = len(dim_used)
+
+    outputs_p3d = outputs.transpose(1, 2)
+    pred_3d = outputs_p3d.contiguous().view(-1, dim_used_len).view(-1, 3)
+    targ_3d = target.transpose(2, 1).contiguous().view(-1, dim_used_len).view(-1, 3)
+
+    mean_3d_err = torch.mean(torch.norm(pred_3d - targ_3d, 2, 1))
+
+    return mean_3d_err
+
+
 def mpjpe_error_3dpw(outputs, all_seq, dct_n, dim_used):
     n, seq_len, dim_full_len = all_seq.data.shape
 
