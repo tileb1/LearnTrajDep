@@ -22,7 +22,7 @@ def train_autoencoder(opt, extension=''):
         num_workers=opt.job,
         pin_memory=True)
 
-    autoencoder = TimeAutoencoder(opt.input_n, opt.input_n)
+    autoencoder = TimeAutoencoder(opt.input_n, opt.input_n-5)
     autoencoder.train()
     autoencoder.to(MY_DEVICE)
     optimizer = optim.Adam(autoencoder.parameters(), lr=opt.lr_autoencoder)

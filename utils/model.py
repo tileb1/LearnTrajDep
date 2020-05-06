@@ -124,7 +124,7 @@ class GCN(nn.Module):
             y = self.gcbs[i](y)
 
         y = self.gc7(y)
-        
+
         y = y + x[:, :, -1]
 
         return y
