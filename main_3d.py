@@ -200,7 +200,6 @@ def train(time_autoencoder, train_loader, model, optimizer, lr_now=None, max_nor
         bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i+1, len(train_loader), time.time() - bt,
                                                                          time.time() - st)
         bar.next()
-        break
     bar.finish()
     return lr_now, t_l.avg
 
@@ -260,7 +259,6 @@ def test(time_autoencoder, train_loader, model, output_n=50, dim_used=[], opt=No
             bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i+1, len(train_loader), time.time() - bt,
                                                                              time.time() - st)
             bar.next()
-            break
         bar.finish()
         return t_l / N, t_3d / N
 
@@ -298,7 +296,6 @@ def val(time_autoencoder, train_loader, model, dim_used=[], opt=None):
             bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i+1, len(train_loader), time.time() - bt,
                                                                              time.time() - st)
             bar.next()
-            break
         bar.finish()
         return t_3d.avg
 
