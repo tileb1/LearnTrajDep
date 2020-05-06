@@ -113,7 +113,7 @@ class GCN(nn.Module):
         self.do = nn.Dropout(p_dropout)
         self.act_f = nn.Tanh()
 
-    def forward(self, x, original=None):
+    def forward(self, x):
         y = self.gc1(x)
         b, n, f = y.shape
         y = self.bn1(y.view(b, -1)).view(b, n, f)
@@ -124,11 +124,10 @@ class GCN(nn.Module):
             y = self.gcbs[i](y)
 
         y = self.gc7(y)
-        # y = y + x
+        
+        y = y + x[:, :, -1]
 
-        if original is None:
-            return y
-        return y + original
+        return y
 
 
 class TimeAutoencoder(nn.Module):

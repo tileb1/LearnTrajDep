@@ -118,7 +118,7 @@ def main(opt):
         ret_log = np.append(ret_log, [lr_now, t_l])
         head = np.append(head, ['lr', 't_l'])
 
-        v_3d = val(time_autoencoder, val_loader, model, is_cuda=is_cuda, dim_used=train_dataset.dim_used, dct_n=dct_n)
+        v_3d = val(time_autoencoder, val_loader, model, is_cuda=is_cuda, dim_used=train_dataset.dim_used, dct_n=dct_n, opt=opt)
 
         ret_log = np.append(ret_log, [v_3d])
         head = np.append(head, ['v_3d'])
@@ -127,7 +127,7 @@ def main(opt):
         test_3d_head = np.array([])
         for act in acts:
             test_l, test_3d = test(time_autoencoder, test_data[act], model, input_n=input_n, output_n=output_n, is_cuda=is_cuda,
-                                   dim_used=train_dataset.dim_used, dct_n=dct_n)
+                                   dim_used=train_dataset.dim_used, dct_n=dct_n, opt=opt)
             # ret_log = np.append(ret_log, test_l)
             ret_log = np.append(ret_log, test_3d)
             head = np.append(head,
@@ -200,11 +200,12 @@ def train(time_autoencoder, train_loader, model, optimizer, lr_now=None, max_nor
         bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i+1, len(train_loader), time.time() - bt,
                                                                          time.time() - st)
         bar.next()
+        break
     bar.finish()
     return lr_now, t_l.avg
 
 
-def test(time_autoencoder, train_loader, model, input_n=20, output_n=50, is_cuda=False, dim_used=[], dct_n=15):
+def test(time_autoencoder, train_loader, model, input_n=20, output_n=50, is_cuda=False, dim_used=[], dct_n=15, opt=None):
     with torch.no_grad():
         N = 0
         t_l = 0
@@ -217,21 +218,24 @@ def test(time_autoencoder, train_loader, model, input_n=20, output_n=50, is_cuda
         model.eval()
         st = time.time()
         bar = Bar('>>>', fill='>', max=len(train_loader))
-        for i, (inputs, targets, all_seq, inputs_time) in enumerate(train_loader):
+        for i, (raw_inputs, target, all_seq) in enumerate(train_loader):
             bt = time.time()
 
-            inputs = inputs.to(MY_DEVICE)
-            all_seq = all_seq.to(MY_DEVICE)
-            inputs_time = inputs_time.to(MY_DEVICE)
+            (batch_size, nb_joints, time_len_input) = raw_inputs.shape
 
-            outputs = model(inputs, inputs_time)
+            # transfer inputs to GPU if needed
+            raw_inputs = raw_inputs.to(MY_DEVICE)
+            target = target.to(MY_DEVICE)
+
+            # Concatenate embeddings with raw inputs
+            inputs = torch.zeros(batch_size, nb_joints, time_len_input + opt.nb_raw).to(MY_DEVICE)
+            inputs[:, :, :time_len_input] = time_autoencoder(raw_inputs)
+            inputs[:, :, time_len_input:] = raw_inputs[:, :, :-opt.nb_raw - 1]
+
+            outputs = model(inputs)
 
             n, seq_len, dim_full_len = all_seq.data.shape
-
-            outputs_3d = time_autoencoder.decoder(outputs).transpose(1, 2)
-
             pred_3d = all_seq.clone()
-            dim_used = np.array(dim_used)
 
             # joints at same loc
             joint_to_ignore = np.array([16, 20, 23, 24, 28, 31])  # joints not in dim_used
@@ -239,11 +243,11 @@ def test(time_autoencoder, train_loader, model, input_n=20, output_n=50, is_cuda
             joint_equal = np.array([13, 19, 22, 13, 27, 30])  # joints in dim_used
             index_to_equal = np.concatenate((joint_equal * 3, joint_equal * 3 + 1, joint_equal * 3 + 2))
 
-            pred_3d[:, :, dim_used] = outputs_3d
+            pred_3d[:, :, dim_used] = outputs.transpose(1, 2)
             pred_3d[:, :, index_to_ignore] = pred_3d[:, :, index_to_equal]
 
-            pred_p3d = pred_3d.contiguous().view(n, seq_len, -1, 3)[:, input_n:, :, :]
-            targ_p3d = all_seq.contiguous().view(n, seq_len, -1, 3)[:, input_n:, :, :]
+            pred_p3d = pred_3d.contiguous().view(n, seq_len, -1, 3)[:, 0:, :, :]
+            targ_p3d = all_seq.contiguous().view(n, seq_len, -1, 3)[:, 0:, :, :]
 
             for k in np.arange(0, len(eval_frame)):
                 j = eval_frame[k]
@@ -255,29 +259,37 @@ def test(time_autoencoder, train_loader, model, input_n=20, output_n=50, is_cuda
             bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i+1, len(train_loader), time.time() - bt,
                                                                              time.time() - st)
             bar.next()
+            break
         bar.finish()
         return t_l / N, t_3d / N
 
 
-def val(time_autoencoder, train_loader, model, is_cuda=False, dim_used=[], dct_n=15):
+def val(time_autoencoder, train_loader, model, is_cuda=False, dim_used=[], dct_n=15, opt=None):
     with torch.no_grad():
         t_3d = utils.AccumLoss()
 
         model.eval()
         st = time.time()
         bar = Bar('>>>', fill='>', max=len(train_loader))
-        for i, (inputs, targets, all_seq, inputs_time) in enumerate(train_loader):
+        for i, (raw_inputs, target, all_seq) in enumerate(train_loader):
             bt = time.time()
 
-            inputs = inputs.to(MY_DEVICE)
-            all_seq = all_seq.to(MY_DEVICE)
-            inputs_time = inputs_time.to(MY_DEVICE)
+            (batch_size, nb_joints, time_len_input) = raw_inputs.shape
 
-            outputs = model(inputs, inputs_time)
+            # transfer inputs to GPU if needed
+            raw_inputs = raw_inputs.to(MY_DEVICE)
+            target = target.to(MY_DEVICE)
+
+            # Concatenate embeddings with raw inputs
+            inputs = torch.zeros(batch_size, nb_joints, time_len_input + opt.nb_raw).to(MY_DEVICE)
+            inputs[:, :, :time_len_input] = time_autoencoder(raw_inputs)
+            inputs[:, :, time_len_input:] = raw_inputs[:, :, :-opt.nb_raw - 1]
+
+            outputs = model(inputs)
 
             n, _, _ = all_seq.data.shape
 
-            m_err = loss_funcs.mpjpe_error_p3d(outputs, all_seq, dct_n, dim_used, time_autoencoder)
+            m_err = loss_funcs.mpjpe_error_p3d_new(outputs, target, dim_used)
 
             # update the training loss
             t_3d.update(m_err.cpu().data.numpy() * n, n)
@@ -285,6 +297,7 @@ def val(time_autoencoder, train_loader, model, is_cuda=False, dim_used=[], dct_n
             bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i+1, len(train_loader), time.time() - bt,
                                                                              time.time() - st)
             bar.next()
+            break
         bar.finish()
         return t_3d.avg
 
