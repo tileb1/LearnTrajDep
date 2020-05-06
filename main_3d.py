@@ -226,6 +226,7 @@ def test(time_autoencoder, train_loader, model, output_n=50, dim_used=[], opt=No
             # transfer inputs to GPU if needed
             raw_inputs = raw_inputs.to(MY_DEVICE)
             target = target.to(MY_DEVICE)
+            all_seq = all_seq.to(MY_DEVICE)
 
             # Concatenate embeddings with raw inputs
             inputs = torch.zeros(batch_size, nb_joints, opt.embedding_size + opt.nb_raw).float().to(MY_DEVICE)
