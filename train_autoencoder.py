@@ -32,7 +32,7 @@ def train_autoencoder(opt, extension=''):
         st = time.time()
         bar = Bar('Epoch {}:'.format(epoch), fill='>', max=len(train_loader))
         average_epoch_loss = 0
-        for i, (input_seq, output_seq) in enumerate(train_loader):
+        for i, (input_seq, output_seq, _) in enumerate(train_loader):
             bt = time.time()
             # padded_seq = padded_seq.to(MY_DEVICE)
             # true_seq = true_seq.to(MY_DEVICE)
