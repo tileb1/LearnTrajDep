@@ -4,11 +4,9 @@ from __future__ import print_function, absolute_import, division
 
 import os
 import time
-import torch
 import torch.nn as nn
 import torch.optim
 from torch.utils.data import DataLoader
-from torch.autograd import Variable
 import numpy as np
 from progress.bar import Bar
 import pandas as pd
@@ -30,7 +28,7 @@ def main(opt):
 
     # save option in log
     script_name = os.path.basename(__file__).split('.')[0]
-    script_name = script_name + '_3D_in{:d}_out{:d}_dct_n_{:d}'.format(opt.input_n, opt.output_n, opt.dct_n)
+    script_name = script_name + '_3D_in{:d}_out{:d}_embdedding_{:d}'.format(opt.input_n, opt.output_n, opt.embedding_size)
 
     # create model
     print(">>> creating model")
@@ -40,12 +38,12 @@ def main(opt):
     sample_rate = opt.sample_rate
 
     model = nnmodel.GCN(input_feature=opt.embedding_size + opt.nb_raw, hidden_feature=opt.linear_size, p_dropout=opt.dropout,
-                        num_stage=opt.num_stage, node_n=66)
+                        num_stage=opt.num_stage, node_n=66, opt=opt)
 
     model.to(MY_DEVICE)
 
     time_autoencoder = TimeAutoencoder(opt.input_n, opt.input_n-5)
-    utils.load_model(time_autoencoder, 'autoencoder_50_30_25to20.pt')
+    utils.load_model(time_autoencoder, 'autoencoder_15_10_.pt')
     # time_autoencoder.decoder = nn.Identity()
 
     print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))

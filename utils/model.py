@@ -87,7 +87,7 @@ class GC_Block(nn.Module):
 
 
 class GCN(nn.Module):
-    def __init__(self, input_feature, hidden_feature, p_dropout, num_stage=1, node_n=48):
+    def __init__(self, input_feature, hidden_feature, p_dropout, num_stage=1, node_n=48, opt=None):
         """
 
         :param input_feature: num of input feature
@@ -108,7 +108,7 @@ class GCN(nn.Module):
 
         self.gcbs = nn.ModuleList(self.gcbs)
 
-        self.gc7 = GraphConvolution(hidden_feature, 25, node_n=node_n)
+        self.gc7 = GraphConvolution(hidden_feature, opt.output_n, node_n=node_n)
 
         self.do = nn.Dropout(p_dropout)
         self.act_f = nn.Tanh()

@@ -64,12 +64,12 @@ def train_autoencoder(opt, extension=''):
 
         if epoch % 10 == 9:
             autoencoder.eval()
-            save_model(autoencoder, 'autoencoder_' + str(opt.input_n + opt.output_n) + '_' +
-                       str(opt.dct_n) + '_' + extension + '.pt')
+            save_model(autoencoder, 'autoencoder_' + str(opt.input_n) + '_' +
+                       str(opt.input_n-5) + '_' + extension + '.pt')
 
     autoencoder.eval()
-    save_model(autoencoder, 'autoencoder_' + str(opt.input_n + opt.output_n) + '_' +
-               str(opt.dct_n) + '_' + extension + '.pt')
+    save_model(autoencoder, 'autoencoder_' + str(opt.input_n) + '_' +
+               str(opt.input_n-5) + '_' + extension + '.pt')
 
 
 if __name__ == "__main__":
