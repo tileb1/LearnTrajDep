@@ -38,10 +38,10 @@ class Options:
         self.parser.add_argument('--lr_decay', type=int, default=2, help='every lr_decay epoch do lr decay')
         self.parser.add_argument('--lr_gamma', type=float, default=0.96)
 
-        self.parser.add_argument('--input_n', type=int, default=15, help='observed seq length')
+        self.parser.add_argument('--input_n', type=int, default=10, help='observed seq length')
         self.parser.add_argument('--output_n', type=int, default=25, help='future seq length')
         self.parser.add_argument('--nb_raw', type=int, default=5, help='number of raw frames fed to GCN')
-        self.parser.add_argument('--embedding_size', type=int, default=10, help='number of raw frames fed to GCN')
+        self.parser.add_argument('--embedding_size', type=int, default=5, help='number of raw frames fed to GCN')
 
         self.parser.add_argument('--dct_n', type=int, default=30, help='number of DCT coeff. preserved for 3D')
 
