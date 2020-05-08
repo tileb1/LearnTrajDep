@@ -42,8 +42,8 @@ def main(opt):
 
     model.to(MY_DEVICE)
 
-    time_autoencoder = TimeAutoencoder(opt.input_n, opt.input_n-5)
-    utils.load_model(time_autoencoder, 'autoencoder_15_10_.pt')
+    time_autoencoder = TimeAutoencoder(opt.input_n, opt.embedding_size)
+    utils.load_model(time_autoencoder, 'autoencoder_{}_{}_.pt'.format(opt.input_n, opt.embedding_size))
     # time_autoencoder.decoder = nn.Identity()
 
     print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))

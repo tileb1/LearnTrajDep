@@ -22,7 +22,7 @@ def train_autoencoder(opt, extension=''):
         num_workers=opt.job,
         pin_memory=True)
 
-    autoencoder = TimeAutoencoder(opt.input_n, opt.input_n-5)
+    autoencoder = TimeAutoencoder(opt.input_n, opt.embedding_size)
     autoencoder.train()
     autoencoder.to(MY_DEVICE)
     optimizer = optim.Adam(autoencoder.parameters(), lr=opt.lr_autoencoder)
@@ -65,11 +65,11 @@ def train_autoencoder(opt, extension=''):
         if epoch % 10 == 9:
             autoencoder.eval()
             save_model(autoencoder, 'autoencoder_' + str(opt.input_n) + '_' +
-                       str(opt.input_n-5) + '_' + extension + '.pt')
+                       str(opt.embedding_size) + '_' + extension + '.pt')
 
     autoencoder.eval()
     save_model(autoencoder, 'autoencoder_' + str(opt.input_n) + '_' +
-               str(opt.input_n-5) + '_' + extension + '.pt')
+               str(opt.embedding_size) + '_' + extension + '.pt')
 
 
 if __name__ == "__main__":
