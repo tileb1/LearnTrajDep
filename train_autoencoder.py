@@ -28,7 +28,7 @@ def train_autoencoder(opt, extension=''):
     optimizer = optim.Adam(autoencoder.parameters(), lr=opt.lr_autoencoder)
     loss_function = nn.MSELoss()
 
-    for epoch in range(50):
+    for epoch in range(1):
         st = time.time()
         bar = Bar('Epoch {}:'.format(epoch), fill='>', max=len(train_loader))
         average_epoch_loss = 0
