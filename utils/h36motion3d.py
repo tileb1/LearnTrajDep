@@ -8,7 +8,7 @@ from utils.model import IdentityAutoencoder
 class H36motion3D(Dataset):
 
     def __init__(self, path_to_data, actions, input_n=20, output_n=10, dct_used=15, split=0, sample_rate=2,
-                 autoencoder=IdentityAutoencoder(), subset=True):
+                 autoencoder=IdentityAutoencoder(), subset=False):
         """
         :param path_to_data:
         :param actions:
