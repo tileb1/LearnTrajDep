@@ -168,6 +168,12 @@ class GCN(nn.Module):
 class LinearDiagonalLayer(nn.Linear):
     def __init__(self, input_size, output_size, nb_features=66):
         super().__init__(input_size * nb_features, output_size * nb_features)
+
+        # Correct initialization
+        stdv = 1. / math.sqrt(input_size)
+        self.weight.data.uniform_(-stdv, stdv)
+        self.bias.data.uniform_(-stdv, stdv)
+
         self.output_size = output_size
         self.input_size = input_size
         self.mask = torch.zeros((output_size * nb_features, input_size * nb_features)).float().to(MY_DEVICE)
