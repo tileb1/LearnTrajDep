@@ -19,7 +19,7 @@ from utils.h36motion3d import H36motion3D
 import utils.model as nnmodel
 import utils.data_utils as data_utils
 from utils.constants import *
-from utils.model import TimeAutoencoder
+from utils.model import TimeAutoencoder, IndividualTimeAutoencoder
 
 
 
@@ -44,8 +44,10 @@ def main(opt):
 
     model.to(MY_DEVICE)
 
-    time_autoencoder = TimeAutoencoder(opt.input_n + opt.output_n, dct_n)
-    utils.load_model(time_autoencoder, 'autoencoder_35_30_MSE30SELU.pt')
+    # time_autoencoder = TimeAutoencoder(opt.input_n + opt.output_n, dct_n)
+    # utils.load_model(time_autoencoder, 'autoencoder_35_30_MSE30SELU.pt')
+    time_autoencoder = IndividualTimeAutoencoder(opt.input_n + opt.output_n, dct_n, 66)
+    utils.load_model(time_autoencoder, 'autoencoder_35_30_IndividualTimeAutoencoder_MSE30SELU.pt')
 
     print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
     optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
