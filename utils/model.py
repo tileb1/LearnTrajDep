@@ -190,21 +190,33 @@ class LinearDiagonalLayer(nn.Linear):
         return super().forward(x)
 
 
-class IndividualTimeAutoencoder(nn.Module):
+class MyEncoder(nn.Module):
     def __init__(self, input_size, hidden_size, nb_features=66, activation=nn.SELU()):
         super().__init__()
         self.nb_features = 66
         self.hidden_size = hidden_size
         self.input_size = input_size
 
-        self.encoder = nn.Sequential(
+        self.encoder1 = nn.Sequential(
             LinearDiagonalLayer(input_size, 32, nb_features=nb_features),
             activation,
             LinearDiagonalLayer(32, 30, nb_features=nb_features),
             activation,
             LinearDiagonalLayer(30, hidden_size, nb_features=nb_features))
 
-        self.decoder = nn.Sequential(
+    def forward(self, x):
+        batch_size = x.shape[0]
+        return self.encoder1(x.reshape(batch_size, -1)).reshape(batch_size, self.nb_features, self.hidden_size)
+
+
+class MyDecoder(nn.Module):
+    def __init__(self, input_size, hidden_size, nb_features=66, activation=nn.SELU()):
+        super().__init__()
+        self.nb_features = 66
+        self.hidden_size = hidden_size
+        self.input_size = input_size
+
+        self.decoder1 = nn.Sequential(
             LinearDiagonalLayer(hidden_size, 30, nb_features=nb_features),
             activation,
             LinearDiagonalLayer(30, 32, nb_features=nb_features),
@@ -213,19 +225,30 @@ class IndividualTimeAutoencoder(nn.Module):
 
     def forward(self, x):
         batch_size = x.shape[0]
-        embedding = self.encoder(x.reshape(batch_size, -1))
-        out = self.decoder(embedding)
+        return self.encoder1(x.reshape(batch_size, -1)).reshape(batch_size, self.nb_features, self.input_size)
 
-        embedding = embedding.reshape(batch_size, self.nb_features, self.hidden_size)
-        out = out.reshape(batch_size, self.nb_features, self.input_size)
+
+class IndividualTimeAutoencoder(nn.Module):
+    def __init__(self, input_size, hidden_size, nb_features=66, activation=nn.SELU()):
+        super().__init__()
+        self.nb_features = 66
+        self.hidden_size = hidden_size
+        self.input_size = input_size
+
+        self.encoder = MyEncoder(input_size, hidden_size, nb_features=nb_features, activation=activation)
+        self.decoder = MyDecoder(input_size, hidden_size, nb_features=nb_features, activation=activation)
+
+    def forward(self, x):
+        embedding = self.encoder(x)
+        out = self.decoder(embedding)
         return out, embedding
 
     def reset_Ws(self):
-        for layer in self.encoder:
+        for layer in self.encoder.encoder1:
             if type(layer) == LinearDiagonalLayer:
                 layer.reset_W()
 
-        for layer in self.decoder:
+        for layer in self.decoder.decoder1:
             if type(layer) == LinearDiagonalLayer:
                 layer.reset_W()
 
