@@ -225,7 +225,7 @@ class MyDecoder(nn.Module):
 
     def forward(self, x):
         batch_size = x.shape[0]
-        return self.encoder1(x.reshape(batch_size, -1)).reshape(batch_size, self.nb_features, self.input_size)
+        return self.decoder1(x.reshape(batch_size, -1)).reshape(batch_size, self.nb_features, self.input_size)
 
 
 class IndividualTimeAutoencoder(nn.Module):
