@@ -170,12 +170,11 @@ class LinearDiagonalLayer(nn.Linear):
         super().__init__(input_size * nb_features, output_size * nb_features)
         self.output_size = output_size
         self.input_size = input_size
-        self.mask = torch.zeros((output_size * nb_features, input_size * nb_features)).float()
+        self.mask = torch.zeros((output_size * nb_features, input_size * nb_features)).float().to(MY_DEVICE)
 
         for i in range(nb_features):
             self.mask[i * self.output_size: (i+1) * self.output_size, i * self.input_size: (i+1) * self.input_size] = 1
 
-        self.mask = self.mask.to(MY_DEVICE)
         self.reset_W()
 
     def reset_W(self):
@@ -219,6 +218,10 @@ class IndividualTimeAutoencoder(nn.Module):
 
     def reset_Ws(self):
         for layer in self.encoder:
+            if type(layer) == LinearDiagonalLayer:
+                layer.reset_W()
+
+        for layer in self.decoder:
             if type(layer) == LinearDiagonalLayer:
                 layer.reset_W()
 
