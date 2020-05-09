@@ -130,40 +130,97 @@ class GCN(nn.Module):
         return y
 
 
-class LinearMultiple(nn.Module):
-    def __init__(self, nb_features, input_size, output_size):
-        super().__init__()
+# class LinearMultiple(nn.Module):
+#     def __init__(self, nb_features, input_size, output_size):
+#         super().__init__()
+#         self.output_size = output_size
+#         self.input_size = input_size
+#         self.nb_features = nb_features
+#         self.linear_list = nn.ModuleList([nn.Linear(input_size, output_size) for _ in range(nb_features)])
+#
+#     def forward(self, x):
+#         y = torch.cat([mod(x[:, None, i, :]) for i, mod in enumerate(self.linear_list)], dim=1)
+#         return y
+#
+#
+# class IndividualTimeAutoencoder(nn.Module):
+#     def __init__(self, input_size, hidden_size, nb_features=66, activation=nn.SELU()):
+#         super().__init__()
+#         self.encoder = nn.Sequential(
+#             LinearMultiple(nb_features, input_size, 32),
+#             activation,
+#             LinearMultiple(nb_features, 32, 30),
+#             activation,
+#             LinearMultiple(nb_features, 30, hidden_size))
+#
+#         self.decoder = nn.Sequential(
+#             LinearMultiple(nb_features, hidden_size, 30),
+#             activation,
+#             LinearMultiple(nb_features, 30, 32),
+#             activation,
+#             LinearMultiple(nb_features, 32, input_size))
+#
+#     def forward(self, x):
+#         embedding = self.encoder(x)
+#         out = self.decoder(embedding)
+#         return out, embedding
+
+class LinearDiagonalLayer(nn.Linear):
+    def __init__(self, input_size, output_size, nb_features=66):
+        super().__init__(input_size * nb_features, output_size * nb_features)
         self.output_size = output_size
         self.input_size = input_size
-        self.nb_features = nb_features
-        self.linear_list = nn.ModuleList([nn.Linear(input_size, output_size) for _ in range(nb_features)])
+        self.mask = torch.zeros((output_size * nb_features, input_size * nb_features)).float()
+
+        for i in range(nb_features):
+            self.mask[i * self.output_size: (i+1) * self.output_size, i * self.input_size: (i+1) * self.input_size] = 1
+
+        self.mask = self.mask.to(MY_DEVICE)
+        self.reset_W()
+
+    def reset_W(self):
+        with torch.no_grad():
+            W = next(iter(self.parameters()))
+            W *= self.mask
 
     def forward(self, x):
-        y = torch.cat([mod(x[:, None, i, :]) for i, mod in enumerate(self.linear_list)], dim=1)
-        return y
+        return super().forward(x)
 
 
 class IndividualTimeAutoencoder(nn.Module):
     def __init__(self, input_size, hidden_size, nb_features=66, activation=nn.SELU()):
         super().__init__()
+        self.nb_features = 66
+        self.hidden_size = hidden_size
+        self.input_size = input_size
+
         self.encoder = nn.Sequential(
-            LinearMultiple(nb_features, input_size, 32),
+            LinearDiagonalLayer(input_size, 32, nb_features=nb_features),
             activation,
-            LinearMultiple(nb_features, 32, 30),
+            LinearDiagonalLayer(32, 30, nb_features=nb_features),
             activation,
-            LinearMultiple(nb_features, 30, hidden_size))
+            LinearDiagonalLayer(30, hidden_size, nb_features=nb_features))
 
         self.decoder = nn.Sequential(
-            LinearMultiple(nb_features, hidden_size, 30),
+            LinearDiagonalLayer(hidden_size, 30, nb_features=nb_features),
             activation,
-            LinearMultiple(nb_features, 30, 32),
+            LinearDiagonalLayer(30, 32, nb_features=nb_features),
             activation,
-            LinearMultiple(nb_features, 32, input_size))
+            LinearDiagonalLayer(32, input_size, nb_features=nb_features))
 
     def forward(self, x):
-        embedding = self.encoder(x)
+        batch_size = x.shape[0]
+        embedding = self.encoder(x.reshape(batch_size, -1))
         out = self.decoder(embedding)
+
+        embedding = embedding.reshape(batch_size, self.nb_features, self.hidden_size)
+        out = out.reshape(batch_size, self.nb_features, self.input_size)
         return out, embedding
+
+    def reset_Ws(self):
+        for layer in self.encoder:
+            if type(layer) == LinearDiagonalLayer:
+                layer.reset_W()
 
 
 class TimeAutoencoder(nn.Module):

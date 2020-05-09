@@ -23,7 +23,7 @@ def train_autoencoder(opt, extension=''):
         num_workers=opt.job,
         pin_memory=True)
 
-    autoencoder = IndividualTimeAutoencoder(opt.input_n + opt.output_n, opt.dct_n)
+    autoencoder = IndividualTimeAutoencoder(opt.input_n + opt.output_n, opt.dct_n, nb_features=66)
     autoencoder.train()
     autoencoder.to(MY_DEVICE)
     optimizer = optim.Adam(autoencoder.parameters(), lr=opt.lr_autoencoder)
@@ -55,6 +55,7 @@ def train_autoencoder(opt, extension=''):
             average_epoch_loss = (i * average_epoch_loss + loss.item()) / (i+1)
             loss.backward()
             optimizer.step()
+            autoencoder.reset_Ws()
 
             bar.suffix = '{}/{}|batch time: {:.4f}s|total time: {:.2f}s|average loss: {:.4E}'.format(i,
                                         len(train_loader)-1, time.time() - bt, time.time() - st, average_epoch_loss)
