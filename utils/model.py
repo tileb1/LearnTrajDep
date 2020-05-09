@@ -139,9 +139,7 @@ class LinearMultiple(nn.Module):
         self.linear_list = nn.ModuleList([nn.Linear(input_size, output_size) for _ in range(nb_features)])
 
     def forward(self, x):
-        y = torch.zeros(x.shape[0], self.nb_features, self.output_size).float().to(MY_DEVICE)
-        for i, mod in enumerate(self.linear_list):
-            y[:, i, :] = mod(x[:, i, :])
+        y = torch.cat([mod(x[:, None, i, :]) for i, mod in enumerate(self.linear_list)], dim=1)
         return y
 
 
