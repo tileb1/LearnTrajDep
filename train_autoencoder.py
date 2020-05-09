@@ -1,7 +1,7 @@
 from utils.opt import Options
 from utils.h36motion3d import H36motion3D
 from torch.utils.data import DataLoader
-from utils.model import TimeAutoencoder
+from utils.model import TimeAutoencoder, IndividualTimeAutoencoder
 import torch.optim as optim
 import torch.nn as nn
 from utils.constants import *
@@ -9,6 +9,7 @@ from progress.bar import Bar
 import time
 from utils.utils import save_model
 from utils.model import IdentityAutoencoder
+import socket
 
 
 def train_autoencoder(opt, extension=''):
@@ -22,7 +23,7 @@ def train_autoencoder(opt, extension=''):
         num_workers=opt.job,
         pin_memory=True)
 
-    autoencoder = TimeAutoencoder(opt.input_n + opt.output_n, opt.dct_n)
+    autoencoder = IndividualTimeAutoencoder(opt.input_n + opt.output_n, opt.dct_n)
     autoencoder.train()
     autoencoder.to(MY_DEVICE)
     optimizer = optim.Adam(autoencoder.parameters(), lr=opt.lr_autoencoder)
@@ -73,4 +74,4 @@ def train_autoencoder(opt, extension=''):
 
 if __name__ == "__main__":
     option = Options().parse()
-    train_autoencoder(option, extension='MSE30SELU')
+    train_autoencoder(option, extension='IndividualTimeAutoencoder_MSE30SELU')

@@ -129,6 +129,44 @@ class GCN(nn.Module):
         return y
 
 
+class LinearMultiple(nn.Module):
+    def __init__(self, nb_features, input_size, output_size):
+        super().__init__()
+        self.output_size = output_size
+        self.input_size = input_size
+        self.nb_features = nb_features
+        self.linear_list = nn.ModuleList([nn.Linear(input_size, output_size) for _ in range(nb_features)])
+
+    def forward(self, x):
+        y = torch.zeros(x.shape[0], self.nb_features, self.output_size).float()
+        for i, mod in enumerate(self.linear_list):
+            y[:, i, :] = mod(x[:, i, :])
+        return y
+
+
+class IndividualTimeAutoencoder(nn.Module):
+    def __init__(self, input_size, hidden_size, nb_features=66, activation=nn.SELU()):
+        super().__init__()
+        self.encoder = nn.Sequential(
+            LinearMultiple(nb_features, input_size, 32),
+            activation,
+            LinearMultiple(nb_features, 32, 30),
+            activation,
+            LinearMultiple(nb_features, 30, hidden_size))
+
+        self.decoder = nn.Sequential(
+            LinearMultiple(nb_features, hidden_size, 30),
+            activation,
+            LinearMultiple(nb_features, 30, 32),
+            activation,
+            LinearMultiple(nb_features, 32, input_size))
+
+    def forward(self, x):
+        embedding = self.encoder(x)
+        out = self.decoder(embedding)
+        return out, embedding
+
+
 class TimeAutoencoder(nn.Module):
     def __init__(self, input_size, hidden_size, activation=nn.SELU()):
         super().__init__()
