@@ -175,8 +175,6 @@ class LinearDiagonalLayer(nn.Linear):
         for i in range(nb_features):
             self.mask[i * self.output_size: (i+1) * self.output_size, i * self.input_size: (i+1) * self.input_size] = 1
 
-        self.reset_W()
-
     def reset_W(self):
         with torch.no_grad():
             W = next(iter(self.parameters()))

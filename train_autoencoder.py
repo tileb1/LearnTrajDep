@@ -25,7 +25,10 @@ def train_autoencoder(opt, extension=''):
 
     autoencoder = IndividualTimeAutoencoder(opt.input_n + opt.output_n, opt.dct_n, nb_features=66)
     autoencoder.train()
+
     autoencoder.to(MY_DEVICE)
+    autoencoder.reset_Ws()
+
     optimizer = optim.Adam(autoencoder.parameters(), lr=opt.lr_autoencoder)
     loss_function = nn.MSELoss()
 
