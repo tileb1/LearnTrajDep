@@ -163,6 +163,39 @@ class TimeAutoencoder(nn.Module):
         return out, embedding
 
 
+class MultipleGCN(nn.Module):
+    def __init__(self, input_feature, hidden_feature, p_dropout, autoencoder1, autoencoder2,
+                 opt, num_stage=1, node_n=48):
+        super().__init__()
+        self.opt = opt
+
+        # No downsampling
+        self.GCN1 = GCN(input_feature, hidden_feature, p_dropout, num_stage=num_stage, node_n=node_n)
+        self.autoencoder1 = autoencoder1
+        for param in self.autoencoder1.parameters():
+            param.requires_grad = False
+
+        # Downsampling by factor 2
+        self.GCN2 = GCN(input_feature, hidden_feature, p_dropout, num_stage=num_stage, node_n=node_n)
+        self.autoencoder2 = autoencoder2
+        for param in self.autoencoder2.parameters():
+            param.requires_grad = False
+
+        # Final layer
+        self.final_layer = nn.Linear(self.opt.input_n + self.opt.output_n + self.opt.output_n//2)
+
+    def forward(self, x1, x2):
+        y1 = self.autoencoder1.decoder(self.GCN1(self.autoencoder1.encoder(x1)))
+        y2 = self.autoencoder2.decoder(self.GCN2(self.autoencoder2.encoder(x2)))
+
+        # Combine both outputs
+        merged = torch.cat((y1, y2[:, :, self.opt.input_n:self.opt.input_n+self.opt.output_n//2]), dim=2)
+
+        return y1, y2, self.final_layer(merged)
+
+
+
+
 class IdentityAutoencoder(nn.Module):
     def __init__(self):
         super().__init__()
