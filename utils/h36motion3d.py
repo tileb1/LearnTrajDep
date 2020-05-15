@@ -30,25 +30,43 @@ class H36motion3D(Dataset):
             acts = ['walking']
 
         subjs = subs[split]
-        all_seqs, dim_ignore, dim_used = data_utils.load_data_3d(path_to_data, subjs, acts, sample_rate,
-                                                                 input_n + output_n)
-        self.all_seqs = all_seqs
+
+        all_data, dim_ignore, dim_used = data_utils.load_data_3d(path_to_data, subjs, acts, sample_rate,
+                                                                 (input_n + output_n)*2)
+
+        ############################################### NO DOWNSAMPLING ###############################################
+        self.all_seqs1 = all_data[:, input_n:2 * input_n + output_n, :]
         self.dim_used = dim_used
 
         # (nb_total_seq, len_seq, nb_joints)
-        all_seqs = torch.from_numpy(all_seqs[:, :, dim_used]).float()
+        all_seqs1 = torch.from_numpy(self.all_seqs1[:, :, dim_used]).float()
 
         # (nb_total_seq, nb_joints, hidden_dim)
-        self.all_seqs_encoded = autoencoder(all_seqs.transpose(2, 1))[1]
-        tmp = all_seqs.transpose(2, 1).clone()
+        self.all_seqs_encoded1 = autoencoder(all_seqs1.transpose(2, 1))[1]
 
         # Pad with last seen skeleton
-        tmp[:, :, input_n:] = tmp[:, :, input_n-1, None]
-        self.all_seqs_encoded_padded = autoencoder(tmp)[1]
+        tmp1 = all_seqs1.transpose(2, 1).clone()
+        tmp1[:, :, input_n:] = tmp1[:, :, input_n - 1, None]
+        self.all_seqs_encoded_padded1 = autoencoder(tmp1)[1]
+
+        ################################################# DOWNSAMPLING ################################################
+        self.all_seqs2 = all_data[:, ::2, :]  # TODO: check if correct
+
+        # (nb_total_seq, len_seq, nb_joints)
+        all_seqs2 = torch.from_numpy(self.all_seqs2[:, :, dim_used]).float()
+
+        # (nb_total_seq, nb_joints, hidden_dim)
+        self.all_seqs_encoded2 = autoencoder(all_seqs2.transpose(2, 1))[1]
+
+        # Pad with last seen skeleton
+        tmp2 = all_seqs2.transpose(2, 1).clone()
+        tmp2[:, :, input_n:] = tmp2[:, :, input_n - 1, None]
+        self.all_seqs_encoded_padded2 = autoencoder(tmp2)[1]
 
     def __len__(self):
-        return self.all_seqs_encoded.shape[0]
+        return self.all_seqs_encoded1.shape[0]
 
     def __getitem__(self, item):
-        return self.all_seqs_encoded_padded[item], self.all_seqs_encoded[item], \
-               self.all_seqs[item]
+        return self.all_seqs_encoded_padded1[item], self.all_seqs_encoded1[item], \
+               self.all_seqs1[item], self.all_seqs_encoded_padded2[item], self.all_seqs_encoded2[item], \
+               self.all_seqs2[item]

@@ -195,8 +195,6 @@ class MultipleGCN(nn.Module):
         return y1, y2, self.final_layer(merged)
 
 
-
-
 class IdentityAutoencoder(nn.Module):
     def __init__(self):
         super().__init__()
