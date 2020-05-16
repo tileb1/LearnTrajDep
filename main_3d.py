@@ -202,7 +202,6 @@ def train(train_loader, model, optimizer, lr_now=None, max_norm=True, is_cuda=Fa
         bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i+1, len(train_loader), time.time() - bt,
                                                                          time.time() - st)
         bar.next()
-        break
     bar.finish()
     return lr_now, t_l.avg
 
@@ -258,7 +257,6 @@ def test(train_loader, model, input_n=20, output_n=50, is_cuda=False, dim_used=[
         bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i+1, len(train_loader), time.time() - bt,
                                                                          time.time() - st)
         bar.next()
-        break
     bar.finish()
     return t_l / N, t_3d / N
 
@@ -288,7 +286,6 @@ def val(train_loader, model, is_cuda=False, dim_used=[], dct_n=15):
         bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i+1, len(train_loader), time.time() - bt,
                                                                          time.time() - st)
         bar.next()
-        break
     bar.finish()
     return t_3d.avg
 
