@@ -44,7 +44,7 @@ def main(opt):
     utils.load_model(time_autoencoder1, name1)
 
     time_autoencoder2 = TimeAutoencoder(opt.input_n + opt.output_n, dct_n)
-    extension = 'DOWNSAMPLED'
+    extension = 'SUBSAMPLED'
     name2 = 'autoencoder_' + str(opt.input_n + opt.output_n) + '_' + str(opt.dct_n) + '_' + extension + '.pt'
     utils.load_model(time_autoencoder2, name2)
 
