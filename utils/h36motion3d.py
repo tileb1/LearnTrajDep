@@ -8,7 +8,7 @@ from utils.model import IdentityAutoencoder
 class H36motion3D(Dataset):
 
     def __init__(self, path_to_data, actions, input_n=20, output_n=10, dct_used=15, split=0, sample_rate=2,
-                 autoencoder=IdentityAutoencoder(), subset=False):
+                 autoencoder=IdentityAutoencoder(), subset=True):
         """
         :param path_to_data:
         :param actions:
@@ -32,7 +32,7 @@ class H36motion3D(Dataset):
         subjs = subs[split]
 
         all_data, dim_ignore, dim_used = data_utils.load_data_3d(path_to_data, subjs, acts, sample_rate,
-                                                                 (input_n + output_n)*2)
+                                                                 (input_n + output_n) * 2)
 
         ############################################### NO DOWNSAMPLING ###############################################
         self.all_seqs1 = all_data[:, input_n:2 * input_n + output_n, :]
@@ -70,3 +70,24 @@ class H36motion3D(Dataset):
         return self.all_seqs_encoded_padded1[item], self.all_seqs_encoded1[item], \
                self.all_seqs1[item], self.all_seqs_encoded_padded2[item], self.all_seqs_encoded2[item], \
                self.all_seqs2[item]
+
+
+class H36motion3DRaw(H36motion3D):
+    def __init__(self, path_to_data, actions, input_n=20, output_n=10, dct_used=15, split=0, sample_rate=2,
+                 autoencoder=IdentityAutoencoder(), subset=False):
+        super().__init__(path_to_data, actions, input_n=input_n, output_n=output_n, dct_used=dct_used,
+                         split=split, sample_rate=sample_rate, autoencoder=autoencoder, subset=subset)
+
+    def __getitem__(self, item):
+        return self.all_seqs_encoded_padded1[item], self.all_seqs_encoded1[item], self.all_seqs1[item]
+
+
+class H36motion3DSubsampled(H36motion3D):
+    def __init__(self, path_to_data, actions, input_n=20, output_n=10, dct_used=15, split=0, sample_rate=2,
+                 autoencoder=IdentityAutoencoder(), subset=False):
+
+        super().__init__(path_to_data, actions, input_n=input_n, output_n=output_n, dct_used=dct_used,
+                         split=split, sample_rate=sample_rate, autoencoder=autoencoder, subset=subset)
+
+    def __getitem__(self, item):
+        return self.all_seqs_encoded_padded2[item], self.all_seqs_encoded2[item], self.all_seqs2[item]

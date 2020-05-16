@@ -39,10 +39,14 @@ def main(opt):
     sample_rate = opt.sample_rate
 
     time_autoencoder1 = TimeAutoencoder(opt.input_n + opt.output_n, dct_n)
-    utils.load_model(time_autoencoder1, 'PUT THE CORRECT FILE NAME !!!!!!!!!!!!!!!!!!!!!!!!!!')
+    extension = 'RAW'
+    name1 = 'autoencoder_' + str(opt.input_n + opt.output_n) + '_' + str(opt.dct_n) + '_' + extension + '.pt'
+    utils.load_model(time_autoencoder1, name1)
 
     time_autoencoder2 = TimeAutoencoder(opt.input_n + opt.output_n, dct_n)
-    utils.load_model(time_autoencoder2, 'PUT THE CORRECT FILE NAME !!!!!!!!!!!!!!!!!!!!!!!!!!')
+    extension = 'DOWNSAMPLED'
+    name2 = 'autoencoder_' + str(opt.input_n + opt.output_n) + '_' + str(opt.dct_n) + '_' + extension + '.pt'
+    utils.load_model(time_autoencoder2, name2)
 
     model = nnmodel.MultipleGCN(dct_n, opt.linear_size, opt.dropout, time_autoencoder1, time_autoencoder2, opt,
                         num_stage=opt.num_stage, node_n=66)
@@ -198,6 +202,7 @@ def train(train_loader, model, optimizer, lr_now=None, max_norm=True, is_cuda=Fa
         bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i+1, len(train_loader), time.time() - bt,
                                                                          time.time() - st)
         bar.next()
+        break
     bar.finish()
     return lr_now, t_l.avg
 
@@ -253,6 +258,7 @@ def test(train_loader, model, input_n=20, output_n=50, is_cuda=False, dim_used=[
         bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i+1, len(train_loader), time.time() - bt,
                                                                          time.time() - st)
         bar.next()
+        break
     bar.finish()
     return t_l / N, t_3d / N
 
@@ -282,6 +288,7 @@ def val(train_loader, model, is_cuda=False, dim_used=[], dct_n=15):
         bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i+1, len(train_loader), time.time() - bt,
                                                                          time.time() - st)
         bar.next()
+        break
     bar.finish()
     return t_3d.avg
 

@@ -183,7 +183,7 @@ class MultipleGCN(nn.Module):
 
         # Final layer
         self.final_layer = nn.Linear(self.opt.input_n + self.opt.output_n + self.opt.output_n//2,
-                                     self.opt.intput_n + self.opt.output_n)
+                                     self.opt.input_n + self.opt.output_n)
 
     def forward(self, x1, x2):
         y1 = self.autoencoder1.decoder(self.GCN1(self.autoencoder1.encoder(x1)))

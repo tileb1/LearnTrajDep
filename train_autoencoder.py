@@ -1,5 +1,5 @@
 from utils.opt import Options
-from utils.h36motion3d import H36motion3D
+from utils.h36motion3d import H36motion3D, H36motion3DRaw, H36motion3DSubsampled
 from torch.utils.data import DataLoader
 from utils.model import TimeAutoencoder
 import torch.optim as optim
@@ -11,17 +11,7 @@ from utils.utils import save_model
 from utils.model import IdentityAutoencoder
 
 
-def train_autoencoder(opt, extension=''):
-    train_dataset = H36motion3D(path_to_data=opt.data_dir, actions='all', input_n=opt.input_n, output_n=opt.output_n,
-                              split=0, sample_rate=opt.sample_rate, autoencoder=IdentityAutoencoder())
-
-    train_loader = DataLoader(
-        dataset=train_dataset,
-        batch_size=opt.train_batch,
-        shuffle=True,
-        num_workers=opt.job,
-        pin_memory=True)
-
+def train_autoencoder(opt, train_loader, extension=''):
     autoencoder = TimeAutoencoder(opt.input_n + opt.output_n, opt.dct_n)
     autoencoder.train()
     autoencoder.to(MY_DEVICE)
@@ -51,12 +41,16 @@ def train_autoencoder(opt, extension=''):
             # loss += 0.5 * loss_function(out_padded[:, :, 1:], padded_seq[:, :, :-1])  # smoothing loss
             # loss += 0.5 * loss_function(out_padded[:, :, :-1], padded_seq[:, :, 1:])  # smoothing loss
 
-            average_epoch_loss = (i * average_epoch_loss + loss.item()) / (i+1)
+            average_epoch_loss = (i * average_epoch_loss + loss.item()) / (i + 1)
             loss.backward()
             optimizer.step()
 
             bar.suffix = '{}/{}|batch time: {:.4f}s|total time: {:.2f}s|average loss: {:.4E}'.format(i,
-                                        len(train_loader)-1, time.time() - bt, time.time() - st, average_epoch_loss)
+                                                                                                     len(
+                                                                                                         train_loader) - 1,
+                                                                                                     time.time() - bt,
+                                                                                                     time.time() - st,
+                                                                                                     average_epoch_loss)
             bar.next()
 
         bar.finish()
@@ -72,5 +66,25 @@ def train_autoencoder(opt, extension=''):
 
 
 if __name__ == "__main__":
-    option = Options().parse()
-    train_autoencoder(option, extension='MSE30SELU')
+    opt = Options().parse()
+    dataset = H36motion3DRaw(path_to_data=opt.data_dir, actions='all', input_n=opt.input_n, output_n=opt.output_n,
+                             split=0, sample_rate=opt.sample_rate, autoencoder=IdentityAutoencoder(), subset=False)
+    train_loader = DataLoader(
+        dataset=dataset,
+        batch_size=opt.train_batch,
+        shuffle=True,
+        num_workers=opt.job,
+        pin_memory=True)
+    train_autoencoder(opt, train_loader, extension='RAW')
+
+    dataset = H36motion3DSubsampled(path_to_data=opt.data_dir, actions='all', input_n=opt.input_n,
+                                    output_n=opt.output_n,
+                                    split=0, sample_rate=opt.sample_rate, autoencoder=IdentityAutoencoder(),
+                                    subset=False)
+    train_loader = DataLoader(
+        dataset=dataset,
+        batch_size=opt.train_batch,
+        shuffle=True,
+        num_workers=opt.job,
+        pin_memory=True)
+    train_autoencoder(opt, train_loader, extension='SUBSAMPLED')
