@@ -190,9 +190,9 @@ class MultipleGCN(nn.Module):
         y2 = self.autoencoder2.decoder(self.GCN2(self.autoencoder2.encoder(x2)))
 
         # Combine both outputs
-        merged = torch.cat((y1, y2[:, :, self.opt.input_n:self.opt.input_n+self.opt.output_n//2]), dim=2)
+        #merged = torch.cat((y1, y2[:, :, self.opt.input_n:self.opt.input_n+self.opt.output_n//2]), dim=2)
 
-        return y1, y2, self.final_layer(merged)
+        return 0, y2, y1#self.final_layer(merged)
 
 
 class IdentityAutoencoder(nn.Module):
