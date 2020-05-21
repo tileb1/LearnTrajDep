@@ -278,7 +278,7 @@ def val(train_loader, model, is_cuda=False, dim_used=[], dct_n=15):
 
         n, _, _ = all_seq1.data.shape
 
-        m_err = loss_funcs.my_mpjpe_error_p3d(y_final[:, :, -5:], all_seq1[:, -5:, :], dim_used)
+        m_err = loss_funcs.my_mpjpe_error_p3d(y_final[:, :, :], all_seq1[:, :, :], dim_used)
 
         # update the training loss
         t_3d.update(m_err.cpu().data.numpy() * n, n)
