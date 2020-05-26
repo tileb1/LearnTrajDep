@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch
 from torch.nn.parameter import Parameter
 import math
+import torch.nn.functional as F
 
 
 class GraphConvolution(nn.Module):
@@ -186,13 +187,31 @@ class MultipleGCN(nn.Module):
                                      self.opt.input_n + self.opt.output_n)
 
     def forward(self, x1, x2):
-        y1 = self.autoencoder1.decoder(self.GCN1(self.autoencoder1.encoder(x1)))
-        y2 = self.autoencoder2.decoder(self.GCN2(self.autoencoder2.encoder(x2)))
+        y1 = self.forward1(x1)
+        y2 = self.forward2(x2)
 
         # Combine both outputs
         #merged = torch.cat((y1, y2[:, :, self.opt.input_n:self.opt.input_n+self.opt.output_n//2]), dim=2)
 
-        return 0, y2, y1#self.final_layer(merged)
+        return y1, y2, y1#self.final_layer(merged)
+
+    def forward1(self, x1):
+        return self.autoencoder1.decoder(self.GCN1(self.autoencoder1.encoder(x1)))
+
+    def forward2(self, x2):
+        return self.autoencoder2.decoder(self.GCN2(self.autoencoder2.encoder(x2)))
+
+    def forward2Interpolated(self, x2):
+        y2 = self.forward2(x2)
+        return F.interpolate(y2[:, :, self.opt.input_n//2:self.opt.input_n+1+self.opt.output_n//2],
+                             mode='linear', scale_factor=2, align_corners=False)[:, :, :-1]
+
+    def my_forward(self, x1, x2, alpha, dim):
+        a = torch.ones(1, 1, self.opt.input_n+self.opt.output_n).float()
+        rest = torch.zeros(1, 1, self.opt.input_n+self.opt.output_n).float()
+        a[:, :, dim] = alpha
+        rest[:, :, dim] = 1-alpha
+        return alpha * self.forward1(x1) + rest * self.forward2(x2)
 
 
 class IdentityAutoencoder(nn.Module):
