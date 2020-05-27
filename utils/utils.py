@@ -47,7 +47,7 @@ def save_model(model, name):
 
 
 def load_model(model, name):
-    model.load_state_dict(torch.load('./models/' + name))
+    model.load_state_dict(torch.load('./models/' + name, map_location=torch.device('cpu')))
     model.eval()
     for param in model.parameters():
         param.requires_grad = False
