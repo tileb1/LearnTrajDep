@@ -135,3 +135,33 @@ def plot_predictions(expmap_gt, expmap_pred, fig, ax, f_title):
 
         fig.canvas.draw()
         plt.pause(0.05)
+
+
+def plot_predictions2(expmap_gt, expmap_pred, fig, ax, f_title):
+    # Load all the data
+    # parent, offset, rotInd, expmapInd = fk._some_variables()
+    #
+    nframes_pred = expmap_pred.shape[0]
+    #
+    # # Compute 3d points for each frame
+    # xyz_gt = np.zeros((nframes_pred, 96))
+    # for i in range(nframes_pred):
+    #     xyz_gt[i, :] = fk.fkl(expmap_gt[i, :], parent, offset, rotInd, expmapInd).reshape([96])
+    # xyz_pred = np.zeros((nframes_pred, 96))
+    # for i in range(nframes_pred):
+    #     xyz_pred[i, :] = fk.fkl(expmap_pred[i, :], parent, offset, rotInd, expmapInd).reshape([96])
+
+    xyz_gt = expmap_gt
+    xyz_pred = expmap_pred
+
+    # === Plot and animate ===
+    ob = Ax3DPose(ax)
+    # Plot the prediction
+    for i in range(nframes_pred):
+
+        ob.update(xyz_gt[i, :], xyz_pred[i, :])
+        ax.set_title(f_title + ' frame:{:d}'.format(i + 1), loc="left")
+        plt.show(block=False)
+
+        fig.canvas.draw()
+        plt.pause(0.05)
