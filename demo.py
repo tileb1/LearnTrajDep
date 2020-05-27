@@ -18,6 +18,7 @@ from matplotlib import pyplot as plt
 from utils import loss_funcs, utils as utils
 from utils.opt import Options
 from utils.h36motion import H36motion
+from utils.h36motion3d import H36motion3D
 import utils.model as nnmodel
 import utils.data_utils as data_utils
 import utils.viz as viz
@@ -33,12 +34,79 @@ def main(opt):
     output_n = opt.output_n
     sample_rate = opt.sample_rate
 
+    opt.dct_n = 35
+
     model = nnmodel.GCN(input_feature=opt.dct_n, hidden_feature=opt.linear_size, p_dropout=opt.dropout,
                         num_stage=opt.num_stage, node_n=48)
     # if is_cuda:
     #     model.cuda()
+    model_path_len = './checkpoint/pretrained/h36m_in10_out25_dctn35.pth.tar'
+    # model_path_len = './checkpoint/pretrained/ckpt_main_in10_out25_dctn30_last.pth.tar'
+    print(">>> loading ckpt len from '{}'".format(model_path_len))
+    # if is_cuda:
+    #     ckpt = torch.load(model_path_len)
+    # else:
+
+    ckpt = torch.load(model_path_len, map_location='cpu')
+    err_best = ckpt['err']
+    start_epoch = ckpt['epoch']
+    model.load_state_dict(ckpt['state_dict'])
+    print(">>> ckpt len loaded (epoch: {} | err: {})".format(start_epoch, err_best))
+
+    # time_autoencoder = TimeAutoencoder(opt.input_n + opt.output_n, opt.dct_n)
+    # utils.load_model(time_autoencoder, 'autoencoder_35_30_MSE30SELU.pt')
+
+    # data loading
+    print(">>> loading data")
+    acts = data_utils.define_actions('all')
+    test_data = dict()
+    for act in acts:
+        test_dataset = H36motion(path_to_data=opt.data_dir, actions=act, input_n=input_n, output_n=output_n, split=1,
+                                 sample_rate=sample_rate)
+        test_data[act] = DataLoader(
+            dataset=test_dataset,
+            batch_size=opt.test_batch,
+            shuffle=False,
+            num_workers=opt.job,
+            pin_memory=True)
+    dim_used = test_dataset.dim_used
+    print(">>> data loaded !")
+
+    model.eval()
+    fig = plt.figure()
+    ax = plt.gca(projection='3d')
+    for act in acts:
+        for i, (inputs, _, all_seq) in enumerate(test_data[act]):
+            outputs = model(inputs)
+            # preds = time_autoencoder.decoder(outputs)
+            preds = outputs
+            pred_exmap = all_seq.clone()
+            pred_exmap[:, :, dim_used] = preds.detach().transpose(1, 2)
+
+            for k in range(8):
+                plt.cla()
+                figure_title = "action:{}, seq:{},".format(act, (k + 1))
+                viz.plot_predictions(all_seq.numpy()[k, :, :], pred_exmap.numpy()[k, :, :], fig, ax, figure_title)
+                plt.pause(1)
+
+
+def main_3d(opt):
+    # is_cuda = torch.cuda.is_available()
+
+    # create model
+    print(">>> creating model")
+    input_n = opt.input_n
+    output_n = opt.output_n
+    sample_rate = opt.sample_rate
+
+    model = nnmodel.GCN(input_feature=opt.dct_n, hidden_feature=opt.linear_size, p_dropout=opt.dropout,
+                        num_stage=opt.num_stage, node_n=66)
+
+    # if is_cuda:
+    #     model.cuda()
     # model_path_len = './checkpoint/pretrained/h36m_in10_out10_dctn20.pth.tar'
-    model_path_len = './checkpoint/test/ckpt_main_in10_out25_dctn30_last.pth.tar'
+    model_path_len = './checkpoint/test/ckpt_main_3d_3D_in10_out25_dct_n_30_best.pth.tar'
+    # model_path_len = './checkpoint/pretrained/h36m3D_in10_out25_dctn30.pth.tar'
     print(">>> loading ckpt len from '{}'".format(model_path_len))
     # if is_cuda:
     #     ckpt = torch.load(model_path_len)
@@ -51,14 +119,15 @@ def main(opt):
     print(">>> ckpt len loaded (epoch: {} | err: {})".format(start_epoch, err_best))
 
     time_autoencoder = TimeAutoencoder(opt.input_n + opt.output_n, opt.dct_n)
-    utils.load_model(time_autoencoder, 'autoencoder_{}_{}.pt'.format(opt.input_n + opt.output_n, opt.dct_n))
+    utils.load_model(time_autoencoder, 'autoencoder_35_30_MSE30SELU.pt')
+    # time_autoencoder = nnmodel.IdentityAutoencoder()
 
     # data loading
     print(">>> loading data")
     acts = data_utils.define_actions('all')
     test_data = dict()
     for act in acts:
-        test_dataset = H36motion(path_to_data=opt.data_dir, actions=act, input_n=input_n, output_n=output_n, split=1,
+        test_dataset = H36motion3D(path_to_data=opt.data_dir, actions=act, input_n=input_n, output_n=output_n, split=1,
                                  sample_rate=sample_rate, autoencoder=time_autoencoder)
         test_data[act] = DataLoader(
             dataset=test_dataset,
@@ -76,16 +145,105 @@ def main(opt):
         for i, (inputs, _, all_seq) in enumerate(test_data[act]):
             outputs = model(inputs)
             preds = time_autoencoder.decoder(outputs)
+            print(preds.shape)
             pred_exmap = all_seq.clone()
             pred_exmap[:, :, dim_used] = preds.detach().transpose(1, 2)
 
             for k in range(8):
                 plt.cla()
                 figure_title = "action:{}, seq:{},".format(act, (k + 1))
-                viz.plot_predictions(all_seq.numpy()[k, :, :], pred_exmap.numpy()[k, :, :], fig, ax, figure_title)
+                viz.plot_predictions2(all_seq.numpy()[k, :, :], pred_exmap.numpy()[k, :, :], fig, ax, figure_title)
+                plt.pause(1)
+
+
+def main3(opt):
+    is_cuda = torch.cuda.is_available()
+
+    # create model
+    print(">>> creating model")
+    input_n = opt.input_n
+    output_n = opt.output_n
+    sample_rate = opt.sample_rate
+
+    model = nnmodel.GCN(input_feature=opt.dct_n, hidden_feature=opt.linear_size, p_dropout=opt.dropout,
+                        num_stage=opt.num_stage, node_n=66)
+    if is_cuda:
+        model.cuda()
+    model_path_len = './checkpoint/pretrained/h36m3D_in10_out25_dctn30.pth.tar'
+    print(">>> loading ckpt len from '{}'".format(model_path_len))
+    if is_cuda:
+        ckpt = torch.load(model_path_len)
+    else:
+        ckpt = torch.load(model_path_len, map_location='cpu')
+    err_best = ckpt['err']
+    start_epoch = ckpt['epoch']
+    model.load_state_dict(ckpt['state_dict'])
+    print(">>> ckpt len loaded (epoch: {} | err: {})".format(start_epoch, err_best))
+
+    # data loading
+    print(">>> loading data")
+    acts = data_utils.define_actions('all')
+    test_data = dict()
+    for act in acts:
+        test_dataset = H36motion3D(path_to_data=opt.data_dir, actions=act, input_n=input_n, output_n=output_n, split=1,
+                                 sample_rate=sample_rate)
+        test_data[act] = DataLoader(
+            dataset=test_dataset,
+            batch_size=opt.test_batch,
+            shuffle=False,
+            num_workers=opt.job,
+            pin_memory=True)
+    dim_used = test_dataset.dim_used
+    print(">>> data loaded !")
+
+    model.eval()
+    fig = plt.figure()
+    ax = plt.gca(projection='3d')
+    for act in acts:
+        for i, (inputs, targets, all_seq) in enumerate(test_data[act]):
+            inputs = Variable(inputs).float()
+            all_seq = Variable(all_seq).float()
+            if is_cuda:
+                inputs = inputs.cuda()
+                all_seq = all_seq.cuda()
+
+            n, seq_len, dim_full_len = all_seq.data.shape
+            dim_used_len = len(dim_used)
+
+            dct_m, idct_m = data_utils.get_dct_matrix(seq_len)
+            idct_m = Variable(torch.from_numpy(idct_m)).float()
+            dct_m = torch.from_numpy(dct_m).float()
+
+            input_dct_seq = np.matmul(dct_m[0:opt.dct_n, :], all_seq[:, :])
+            print(input_dct_seq.shape)
+            print(inputs.shape)
+            input_dct_seq = input_dct_seq.transpose(1, 2)
+            input_dct_seq = input_dct_seq[:, dim_used, :]
+
+            inputs = input_dct_seq
+
+            print(inputs.shape)
+            print(all_seq.shape)
+            outputs = model(inputs)
+
+
+            outputs_t = outputs.view(-1, opt.dct_n).transpose(0, 1)
+            outputs_exp = torch.matmul(idct_m[:, :opt.dct_n], outputs_t).transpose(0, 1).contiguous().view(-1, dim_used_len,
+                                                                                            seq_len).transpose(1, 2)
+
+            pred_expmap = all_seq.clone()
+            dim_used = np.array(dim_used)
+            pred_expmap[:, :, dim_used] = outputs_exp
+            targ_expmap = all_seq
+            pred_expmap = pred_expmap.cpu().data.numpy()
+            targ_expmap = targ_expmap.cpu().data.numpy()
+            for k in range(8):
+                plt.cla()
+                figure_title = "action:{}, seq:{},".format(act, (k + 1))
+                viz.plot_predictions2(targ_expmap[k, :, :], pred_expmap[k, :, :], fig, ax, figure_title)
                 plt.pause(1)
 
 
 if __name__ == "__main__":
     option = Options().parse()
-    main(option)
+    main_3d(option)
