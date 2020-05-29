@@ -224,7 +224,10 @@ class IdentityAutoencoder(nn.Module):
     def forward(self, x):
         return x, x
 
-
+##################################################################################################################
+##################################################################################################################
+##################################################################################################################
+##################################################################################################################
 class Conv1Channel(nn.Module):
     def __init__(self, nb_filters=1, filter_size=1, stride=1, dilation=1):
         super().__init__()
@@ -269,6 +272,7 @@ class InceptionGCN(nn.Module):
         """
         super().__init__()
         self.num_stage = num_stage
+        self.bn1 = nn.BatchNorm1d(node_n * hidden_feature)
         self.time_inception_mod = TimeInceptionModule()
 
         self.gcbs = []
@@ -277,19 +281,23 @@ class InceptionGCN(nn.Module):
 
         self.gcbs = nn.ModuleList(self.gcbs)
 
-        self.gc7 = GraphConvolution(hidden_feature, input_feature, node_n=node_n)
+        self.gc7 = GraphConvolution(hidden_feature, opt.output_n+opt.input_n, node_n=node_n)
 
         self.do = nn.Dropout(p_dropout)
         self.act_f = nn.Tanh()
 
     def forward(self, x):
         y = self.time_inception_mod(x)
+        b, n, f = y.shape
+        y = self.bn1(y.view(b, -1)).view(b, n, f)
+        y = self.act_f(y)
+        y = nn.SELU(y)
 
         for i in range(self.num_stage):
             y = self.gcbs[i](y)
 
         y = self.gc7(y)
 
-        y = y + x
+        y = y + x[:, :, -1, None]
 
         return y
