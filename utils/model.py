@@ -223,3 +223,73 @@ class IdentityAutoencoder(nn.Module):
 
     def forward(self, x):
         return x, x
+
+
+class Conv1Channel(nn.Module):
+    def __init__(self, nb_filters=1, filter_size=1, stride=1, dilation=1):
+        super().__init__()
+        self.conv = nn.Conv1d(1, nb_filters, filter_size, stride=stride, padding=0, dilation=dilation, groups=1,
+                              bias=True, padding_mode='zeros')
+
+    def forward(self, x):
+        shape = x.shape
+        x = x.reshape(-1, shape[-1])
+        x = x[:, None, :]
+        x = self.conv(x)
+        x = x.reshape(shape[0], shape[1], -1)
+        return x
+
+
+class TimeInceptionModule(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.convolutions = nn.ModuleList([])
+        self.convolutions.append(Conv1Channel(nb_filters=12, filter_size=2))
+        self.convolutions.append(Conv1Channel(nb_filters=9, filter_size=3))
+        self.convolutions.append(Conv1Channel(nb_filters=7, filter_size=5))
+        self.convolutions.append(Conv1Channel(nb_filters=6, filter_size=7))
+
+    def forward(self, x):
+        out = x
+        for conv in self.convolutions:
+            y = conv(x)
+            out = torch.cat((out, y), 2)
+        return out
+
+
+class InceptionGCN(nn.Module):
+    def __init__(self, input_feature, hidden_feature, p_dropout, num_stage=1, node_n=48):
+        """
+
+        :param input_feature: num of input feature
+        :param hidden_feature: num of hidden feature
+        :param p_dropout: drop out prob.
+        :param num_stage: number of residual blocks
+        :param node_n: number of nodes in graph
+        """
+        super().__init__()
+        self.num_stage = num_stage
+        self.time_inception_mod = TimeInceptionModule()
+
+        self.gcbs = []
+        for i in range(num_stage):
+            self.gcbs.append(GC_Block(hidden_feature, p_dropout=p_dropout, node_n=node_n))
+
+        self.gcbs = nn.ModuleList(self.gcbs)
+
+        self.gc7 = GraphConvolution(hidden_feature, input_feature, node_n=node_n)
+
+        self.do = nn.Dropout(p_dropout)
+        self.act_f = nn.Tanh()
+
+    def forward(self, x):
+        y = self.time_inception_mod(x)
+
+        for i in range(self.num_stage):
+            y = self.gcbs[i](y)
+
+        y = self.gc7(y)
+
+        y = y + x
+
+        return y
