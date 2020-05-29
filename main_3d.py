@@ -170,7 +170,7 @@ def train(train_loader, model, optimizer, lr_now=None, max_norm=True, is_cuda=Fa
     model.train()
     st = time.time()
     bar = Bar('>>>', fill='>', max=len(train_loader))
-    for i, (inputs1, targets1, all_seq1, inputs2, targets2, all_seq2) in enumerate(train_loader):
+    for i, (inputs1, targets1, all_seq1) in enumerate(train_loader):
 
         batch_size = inputs1.shape[0]
         if batch_size == 1:
@@ -181,17 +181,14 @@ def train(train_loader, model, optimizer, lr_now=None, max_norm=True, is_cuda=Fa
         # transfer inputs to GPU if needed
         inputs1 = inputs1.to(MY_DEVICE)
         all_seq1 = all_seq1.to(MY_DEVICE)
-        inputs2 = inputs2.to(MY_DEVICE)
-        all_seq2 = all_seq2.to(MY_DEVICE)
 
         # forward pass
         optimizer.zero_grad()
-        y1, y2, y_final = model(inputs1, inputs2)
+        y_final = model(inputs1)
 
         # backward pass
         loss = loss_funcs.my_mpjpe_error_p3d(y_final, all_seq1, dim_used)
-        # loss += loss_funcs.my_mpjpe_error_p3d(y1, all_seq1, dim_used)
-        loss += loss_funcs.my_mpjpe_error_p3d(y2, all_seq2, dim_used)
+
         loss.backward()
         if max_norm:
             nn.utils.clip_grad_norm_(model.parameters(), max_norm=1)
@@ -219,15 +216,13 @@ def test(train_loader, model, input_n=20, output_n=50, is_cuda=False, dim_used=[
     model.eval()
     st = time.time()
     bar = Bar('>>>', fill='>', max=len(train_loader))
-    for i, (inputs1, targets1, all_seq1, inputs2, targets2, all_seq2) in enumerate(train_loader):
+    for i, (inputs1, targets1, all_seq1) in enumerate(train_loader):
         bt = time.time()
 
         inputs1 = inputs1.to(MY_DEVICE)
-        inputs2 = inputs2.to(MY_DEVICE)
-
         all_seq = all_seq1.to(MY_DEVICE)
 
-        y1, y2, y_final = model(inputs1, inputs2)
+        y_final = model(inputs1)
 
         n, seq_len, dim_full_len = all_seq.data.shape
 
@@ -262,43 +257,41 @@ def test(train_loader, model, input_n=20, output_n=50, is_cuda=False, dim_used=[
     return t_l / N, t_3d / N
 
 
-def my_evaluate(loader, model, dim_used, opt, j=24, alpha=1, dim=10):
-    model.eval()
-    N = 0
-    t_3d = 0
-    for i, (inputs1, targets1, all_seq1, inputs2, targets2, all_seq2) in enumerate(loader):
-        inputs1 = inputs1.to(MY_DEVICE)
-        inputs2 = inputs2.to(MY_DEVICE)
-
-        all_seq = all_seq1.to(MY_DEVICE)
-
-        y_final = model.my_forward(inputs1, inputs2, alpha, dim)
-
-        n, seq_len, dim_full_len = all_seq.data.shape
-
-        outputs_3d = y_final.transpose(1, 2)
-
-        pred_3d = all_seq.clone()
-        dim_used = np.array(dim_used)
-
-        # joints at same loc
-        joint_to_ignore = np.array([16, 20, 23, 24, 28, 31])  # joints not in dim_used
-        index_to_ignore = np.concatenate((joint_to_ignore * 3, joint_to_ignore * 3 + 1, joint_to_ignore * 3 + 2))
-        joint_equal = np.array([13, 19, 22, 13, 27, 30])  # joints in dim_used
-        index_to_equal = np.concatenate((joint_equal * 3, joint_equal * 3 + 1, joint_equal * 3 + 2))
-
-        pred_3d[:, :, dim_used] = outputs_3d
-        pred_3d[:, :, index_to_ignore] = pred_3d[:, :, index_to_equal]
-
-        pred_p3d = pred_3d.contiguous().view(n, seq_len, -1, 3)[:, opt.input_n:, :, :]
-        targ_p3d = all_seq.contiguous().view(n, seq_len, -1, 3)[:, opt.input_n:, :, :]
-
-
-        diff = targ_p3d[:, j, :, :].contiguous().view(-1, 3) - pred_p3d[:, j, :, :].contiguous().view(-1, 3)
-        t_3d += torch.mean(torch.norm(diff, 2, 1)).cpu().data.numpy() * n
-
-        N += n
-    return t_3d / N
+# def my_evaluate(loader, model, dim_used, opt, j=24, alpha=1, dim=10):
+#     model.eval()
+#     N = 0
+#     t_3d = 0
+#     for i, (inputs1, targets1, all_seq1, inputs2, targets2, all_seq2) in enumerate(loader):
+#         inputs1 = inputs1.to(MY_DEVICE)
+#         all_seq = all_seq1.to(MY_DEVICE)
+#
+#         y_final = model(inputs1)
+#
+#         n, seq_len, dim_full_len = all_seq.data.shape
+#
+#         outputs_3d = y_final.transpose(1, 2)
+#
+#         pred_3d = all_seq.clone()
+#         dim_used = np.array(dim_used)
+#
+#         # joints at same loc
+#         joint_to_ignore = np.array([16, 20, 23, 24, 28, 31])  # joints not in dim_used
+#         index_to_ignore = np.concatenate((joint_to_ignore * 3, joint_to_ignore * 3 + 1, joint_to_ignore * 3 + 2))
+#         joint_equal = np.array([13, 19, 22, 13, 27, 30])  # joints in dim_used
+#         index_to_equal = np.concatenate((joint_equal * 3, joint_equal * 3 + 1, joint_equal * 3 + 2))
+#
+#         pred_3d[:, :, dim_used] = outputs_3d
+#         pred_3d[:, :, index_to_ignore] = pred_3d[:, :, index_to_equal]
+#
+#         pred_p3d = pred_3d.contiguous().view(n, seq_len, -1, 3)[:, opt.input_n:, :, :]
+#         targ_p3d = all_seq.contiguous().view(n, seq_len, -1, 3)[:, opt.input_n:, :, :]
+#
+#
+#         diff = targ_p3d[:, j, :, :].contiguous().view(-1, 3) - pred_p3d[:, j, :, :].contiguous().view(-1, 3)
+#         t_3d += torch.mean(torch.norm(diff, 2, 1)).cpu().data.numpy() * n
+#
+#         N += n
+#     return t_3d / N
 
 
 def val(train_loader, model, is_cuda=False, dim_used=[], dct_n=15):
@@ -307,14 +300,13 @@ def val(train_loader, model, is_cuda=False, dim_used=[], dct_n=15):
     model.eval()
     st = time.time()
     bar = Bar('>>>', fill='>', max=len(train_loader))
-    for i, (inputs1, targets1, all_seq1, inputs2, targets2, all_seq2) in enumerate(train_loader):
+    for i, (inputs1, targets1, all_seq1) in enumerate(train_loader):
         bt = time.time()
 
         inputs1 = inputs1.to(MY_DEVICE)
-        inputs2 = inputs2.to(MY_DEVICE)
         all_seq1 = all_seq1.to(MY_DEVICE)
 
-        y1, y2, y_final = model(inputs1, inputs2)
+        y_final = model(inputs1)
 
         n, _, _ = all_seq1.data.shape
 
