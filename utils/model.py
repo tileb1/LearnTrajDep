@@ -270,6 +270,7 @@ class InceptionGCN(nn.Module):
         :param num_stage: number of residual blocks
         :param node_n: number of nodes in graph
         """
+        self.opt = opt
         super().__init__()
         self.num_stage = num_stage
         self.bn1 = nn.BatchNorm1d(node_n * hidden_feature)
@@ -281,22 +282,24 @@ class InceptionGCN(nn.Module):
 
         self.gcbs = nn.ModuleList(self.gcbs)
 
-        self.gc7 = GraphConvolution(hidden_feature, opt.output_n+opt.input_n, node_n=node_n)
+        # self.gc7 = GraphConvolution(hidden_feature, opt.output_n+opt.input_n, node_n=node_n)
 
         self.do = nn.Dropout(p_dropout)
         self.act_f = nn.Tanh()
+        self.final = nn.Linear(hidden_feature, opt.output_n+opt.input_n)
 
     def forward(self, x):
+        x = x[:, :, :self.opt.input_n]
         y = self.time_inception_mod(x)
         b, n, f = y.shape
         y = self.bn1(y.view(b, -1)).view(b, n, f)
         y = self.act_f(y)
-        y = nn.SELU(y)
 
         for i in range(self.num_stage):
             y = self.gcbs[i](y)
 
-        y = self.gc7(y)
+        # y = self.gc7(y)
+        y = self.final(y)
 
         y = y + x[:, :, -1, None]
 
