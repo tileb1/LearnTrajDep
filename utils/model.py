@@ -261,7 +261,7 @@ class TimeInceptionModule(nn.Module):
 
 
 class InceptionGCN(nn.Module):
-    def __init__(self, input_feature, hidden_feature, p_dropout, num_stage=1, node_n=48):
+    def __init__(self, hidden_feature, p_dropout, num_stage=1, node_n=48, opt=None):
         """
 
         :param input_feature: num of input feature

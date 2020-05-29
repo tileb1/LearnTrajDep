@@ -38,18 +38,19 @@ def main(opt):
     dct_n = opt.dct_n
     sample_rate = opt.sample_rate
 
-    time_autoencoder1 = TimeAutoencoder(opt.input_n + opt.output_n, dct_n)
-    extension = 'RAW'
-    name1 = 'autoencoder_' + str(opt.input_n + opt.output_n) + '_' + str(opt.dct_n) + '_' + extension + '.pt'
-    utils.load_model(time_autoencoder1, name1)
+    # time_autoencoder1 = TimeAutoencoder(opt.input_n + opt.output_n, dct_n)
+    # extension = 'RAW'
+    # name1 = 'autoencoder_' + str(opt.input_n + opt.output_n) + '_' + str(opt.dct_n) + '_' + extension + '.pt'
+    # utils.load_model(time_autoencoder1, name1)
+    #
+    # time_autoencoder2 = TimeAutoencoder(opt.input_n + opt.output_n, dct_n)
+    # extension = 'SUBSAMPLED'
+    # name2 = 'autoencoder_' + str(opt.input_n + opt.output_n) + '_' + str(opt.dct_n) + '_' + extension + '.pt'
+    # utils.load_model(time_autoencoder2, name2)
 
-    time_autoencoder2 = TimeAutoencoder(opt.input_n + opt.output_n, dct_n)
-    extension = 'SUBSAMPLED'
-    name2 = 'autoencoder_' + str(opt.input_n + opt.output_n) + '_' + str(opt.dct_n) + '_' + extension + '.pt'
-    utils.load_model(time_autoencoder2, name2)
-
-    model = nnmodel.MultipleGCN(dct_n, opt.linear_size, opt.dropout, time_autoencoder1, time_autoencoder2, opt,
-                        num_stage=opt.num_stage, node_n=66)
+    # model = nnmodel.MultipleGCN(dct_n, opt.linear_size, opt.dropout, time_autoencoder1, time_autoencoder2, opt,
+    #                     num_stage=opt.num_stage, node_n=66)
+    model = nnmodel.InceptionGCN(opt.linear_size, opt.dropout, num_stage=opt.num_stage, node_n=66, opt=opt)
 
     model.to(MY_DEVICE)
 
