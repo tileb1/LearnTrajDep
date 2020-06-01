@@ -241,22 +241,73 @@ class Conv1Channel(nn.Module):
         x = self.conv(x)
         x = x.reshape(shape[0], shape[1], -1)
         return x
-
+#
+#
+# class TimeInceptionModule(nn.Module):
+#     def __init__(self):
+#         super().__init__()
+#         self.convolutions = nn.ModuleList([])
+#         self.convolutions.append(Conv1Channel(nb_filters=12, filter_size=2))
+#         self.convolutions.append(Conv1Channel(nb_filters=9, filter_size=3))
+#         self.convolutions.append(Conv1Channel(nb_filters=7, filter_size=5))
+#         self.convolutions.append(Conv1Channel(nb_filters=6, filter_size=7))
+#
+#     def forward(self, x):
+#         out = x
+#         for conv in self.convolutions:
+#             y = conv(x)
+#             out = torch.cat((out, y), 2)
+#         return out
 
 class TimeInceptionModule(nn.Module):
     def __init__(self):
         super().__init__()
-        self.convolutions = nn.ModuleList([])
-        self.convolutions.append(Conv1Channel(nb_filters=12, filter_size=2))
-        self.convolutions.append(Conv1Channel(nb_filters=9, filter_size=3))
-        self.convolutions.append(Conv1Channel(nb_filters=7, filter_size=5))
-        self.convolutions.append(Conv1Channel(nb_filters=6, filter_size=7))
+        self.convolutions5 = nn.ModuleList([])
+        self.convolutions10 = nn.ModuleList([])
+        self.convolutions15 = nn.ModuleList([])
+        self.convolutions20 = nn.ModuleList([])
 
-    def forward(self, x):
-        out = x
-        for conv in self.convolutions:
+        self.convolutions5.append(Conv1Channel(nb_filters=12, filter_size=2))
+        self.convolutions5.append(Conv1Channel(nb_filters=12, filter_size=3))
+
+        self.convolutions10.append(Conv1Channel(nb_filters=8, filter_size=5))
+        self.convolutions10.append(Conv1Channel(nb_filters=8, filter_size=7))
+
+        self.convolutions15.append(Conv1Channel(nb_filters=3, filter_size=9))
+        self.convolutions15.append(Conv1Channel(nb_filters=3, filter_size=11))
+
+        self.convolutions20.append(Conv1Channel(nb_filters=3, filter_size=7, dilation=2))
+        self.convolutions20.append(Conv1Channel(nb_filters=3, filter_size=9, dilation=2))
+
+        self.output_size = self.forward(torch.ones(1, 1, 100)).shape[2]
+
+    def forward(self, inpt):
+        out = inpt[:, :, -10:]
+
+        # 5 observed time indices
+        x = inpt[:, :, -5:]
+        for conv in self.convolutions5:
             y = conv(x)
             out = torch.cat((out, y), 2)
+
+        # 10 observed time indices
+        x = inpt[:, :, -10:]
+        for conv in self.convolutions10:
+            y = conv(x)
+            out = torch.cat((out, y), 2)
+
+        # 15 observed time indices
+        x = inpt[:, :, -15:]
+        for conv in self.convolutions15:
+            y = conv(x)
+            out = torch.cat((out, y), 2)
+
+        # 20 observed time indices
+        x = inpt[:, :, -20:]
+        for conv in self.convolutions20:
+            y = conv(x)
+            out = torch.cat((out, y), 2)
+
         return out
 
 
@@ -270,11 +321,15 @@ class InceptionGCN(nn.Module):
         :param num_stage: number of residual blocks
         :param node_n: number of nodes in graph
         """
-        self.opt = opt
         super().__init__()
+        self.opt = opt
+        self.time_inception_mod = TimeInceptionModule()
+
+        # Overwrite input parameter with correct size
+        hidden_feature = self.time_inception_mod.output_size
+
         self.num_stage = num_stage
         self.bn1 = nn.BatchNorm1d(node_n * hidden_feature)
-        self.time_inception_mod = TimeInceptionModule()
 
         self.gcbs = []
         for i in range(num_stage):

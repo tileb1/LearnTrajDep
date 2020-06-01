@@ -170,7 +170,7 @@ def train(train_loader, model, optimizer, lr_now=None, max_norm=True, is_cuda=Fa
     model.train()
     st = time.time()
     bar = Bar('>>>', fill='>', max=len(train_loader))
-    for i, (inputs1, targets1, all_seq1) in enumerate(train_loader):
+    for i, (targets1, inputs1, all_seq1) in enumerate(train_loader):
 
         batch_size = inputs1.shape[0]
         if batch_size == 1:
@@ -216,7 +216,7 @@ def test(train_loader, model, input_n=20, output_n=50, is_cuda=False, dim_used=[
     model.eval()
     st = time.time()
     bar = Bar('>>>', fill='>', max=len(train_loader))
-    for i, (inputs1, targets1, all_seq1) in enumerate(train_loader):
+    for i, (targets1, inputs1, all_seq1) in enumerate(train_loader):
         bt = time.time()
 
         inputs1 = inputs1.to(MY_DEVICE)
@@ -300,7 +300,7 @@ def val(train_loader, model, is_cuda=False, dim_used=[], dct_n=15):
     model.eval()
     st = time.time()
     bar = Bar('>>>', fill='>', max=len(train_loader))
-    for i, (inputs1, targets1, all_seq1) in enumerate(train_loader):
+    for i, (targets1, inputs1, all_seq1) in enumerate(train_loader):
         bt = time.time()
 
         inputs1 = inputs1.to(MY_DEVICE)
