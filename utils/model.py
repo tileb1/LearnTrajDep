@@ -262,51 +262,61 @@ class Conv1Channel(nn.Module):
 class TimeInceptionModule(nn.Module):
     def __init__(self):
         super().__init__()
-        self.convolutions5 = nn.ModuleList([])
-        self.convolutions10 = nn.ModuleList([])
-        self.convolutions15 = nn.ModuleList([])
-        self.convolutions20 = nn.ModuleList([])
+        self.observed_length = [5, 5, 10, 10, 15, 15, 20, 20]
+        self.convolutions = nn.ModuleList([])
 
-        self.convolutions5.append(Conv1Channel(nb_filters=12, filter_size=2))
-        self.convolutions5.append(Conv1Channel(nb_filters=12, filter_size=3))
+        # Observed length 5
+        self.convolutions.append(Conv1Channel(nb_filters=12, filter_size=2))
+        self.convolutions.append(Conv1Channel(nb_filters=12, filter_size=3))
 
-        self.convolutions10.append(Conv1Channel(nb_filters=8, filter_size=5))
-        self.convolutions10.append(Conv1Channel(nb_filters=8, filter_size=7))
+        # Observed length 10
+        self.convolutions.append(Conv1Channel(nb_filters=8, filter_size=5))
+        self.convolutions.append(Conv1Channel(nb_filters=8, filter_size=7))
 
-        self.convolutions15.append(Conv1Channel(nb_filters=3, filter_size=9))
-        self.convolutions15.append(Conv1Channel(nb_filters=3, filter_size=11))
+        # Observed length 15
+        self.convolutions.append(Conv1Channel(nb_filters=3, filter_size=9))
+        self.convolutions.append(Conv1Channel(nb_filters=3, filter_size=11))
 
-        self.convolutions20.append(Conv1Channel(nb_filters=3, filter_size=7, dilation=2))
-        self.convolutions20.append(Conv1Channel(nb_filters=3, filter_size=9, dilation=2))
+        # Observed length 20
+        self.convolutions.append(Conv1Channel(nb_filters=3, filter_size=7, dilation=2))
+        self.convolutions.append(Conv1Channel(nb_filters=3, filter_size=9, dilation=2))
 
         self.output_size = self.forward(torch.ones(1, 1, 100)).shape[2]
+        assert(len(self.observed_length) == len(self.convolutions))
 
     def forward(self, inpt):
+        # Add the 10 last seen frame to the output features
         out = inpt[:, :, -10:]
 
-        # 5 observed time indices
-        x = inpt[:, :, -5:]
-        for conv in self.convolutions5:
+        for obs_len, conv in zip(self.observed_length, self.convolutions):
+            x = inpt[:, :, -obs_len:]
             y = conv(x)
             out = torch.cat((out, y), 2)
 
-        # 10 observed time indices
-        x = inpt[:, :, -10:]
-        for conv in self.convolutions10:
-            y = conv(x)
-            out = torch.cat((out, y), 2)
-
-        # 15 observed time indices
-        x = inpt[:, :, -15:]
-        for conv in self.convolutions15:
-            y = conv(x)
-            out = torch.cat((out, y), 2)
-
-        # 20 observed time indices
-        x = inpt[:, :, -20:]
-        for conv in self.convolutions20:
-            y = conv(x)
-            out = torch.cat((out, y), 2)
+        # # 5 observed time indices
+        # x = inpt[:, :, -5:]
+        # for conv in self.convolutions5:
+        #     y = conv(x)
+        #     out = torch.cat((out, y), 2)
+        #
+        # # 10 observed time indices
+        # x = inpt[:, :, -10:]
+        # for conv in self.convolutions10:
+        #     y = conv(x)
+        #     out = torch.cat((out, y), 2)
+        #
+        # # 15 observed time indices
+        # x = inpt[:, :, -15:]
+        # for conv in self.convolutions15:
+        #     y = conv(x)
+        #     out = torch.cat((out, y), 2)
+        #
+        # # 20 observed time indices
+        # x = inpt[:, :, -20:]
+        # for conv in self.convolutions20:
+        #     y = conv(x)
+        #     out = torch.cat((out, y), 2)
+        print(out.shape)
 
         return out
 
