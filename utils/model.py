@@ -316,7 +316,6 @@ class TimeInceptionModule(nn.Module):
         # for conv in self.convolutions20:
         #     y = conv(x)
         #     out = torch.cat((out, y), 2)
-        print(out.shape)
 
         return out
 
