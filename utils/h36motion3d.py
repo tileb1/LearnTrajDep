@@ -8,7 +8,7 @@ from utils.model import IdentityAutoencoder
 class H36motion3D(Dataset):
 
     def __init__(self, path_to_data, actions, input_n=20, output_n=10, dct_used=15, split=0, sample_rate=2,
-                 autoencoder=IdentityAutoencoder(), subset=False):
+                 autoencoder=IdentityAutoencoder(), subset=False, treat_subj5_differently=True):
         """
         :param path_to_data:
         :param actions:
@@ -31,7 +31,8 @@ class H36motion3D(Dataset):
 
         subjs = subs[split]
         all_seqs, dim_ignore, dim_used = data_utils.load_data_3d(path_to_data, subjs, acts, sample_rate,
-                                                                 input_n + output_n)
+                                                                 input_n + output_n,
+                                                                 treat_subj5_differently=treat_subj5_differently)
         self.all_seqs = all_seqs
         self.dim_used = dim_used
 
@@ -43,7 +44,7 @@ class H36motion3D(Dataset):
         tmp = all_seqs.transpose(2, 1).clone()
 
         # Pad with last seen skeleton
-        tmp[:, :, input_n:] = tmp[:, :, input_n-1, None]
+        tmp[:, :, input_n:] = tmp[:, :, input_n - 1, None]
         self.all_seqs_encoded_padded = autoencoder(tmp)[1]
 
     def __len__(self):

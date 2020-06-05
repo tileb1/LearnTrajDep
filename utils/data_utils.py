@@ -681,7 +681,7 @@ def load_data(path_to_dataset, subjects, actions, sample_rate, seq_len, input_n=
     return sampled_seq, dimensions_to_ignore, dimensions_to_use, data_mean, data_std
 
 
-def load_data_3d(path_to_dataset, subjects, actions, sample_rate, seq_len):
+def load_data_3d(path_to_dataset, subjects, actions, sample_rate, seq_len, treat_subj5_differently=True):
     """
 
     adapted from
@@ -699,7 +699,7 @@ def load_data_3d(path_to_dataset, subjects, actions, sample_rate, seq_len):
     for subj in subjects:
         for action_idx in np.arange(len(actions)):
             action = actions[action_idx]
-            if not (subj == 5):
+            if not (subj == 5) or not treat_subj5_differently:
                 for subact in [1, 2]:  # subactions
 
                     print("Reading subject {0}, action {1}, subaction {2}".format(subj, action, subact))

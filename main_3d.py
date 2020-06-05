@@ -20,12 +20,16 @@ import utils.model as nnmodel
 import utils.data_utils as data_utils
 from utils.constants import *
 from utils.model import TimeAutoencoder
+from datetime import datetime
 
 
 def main(opt):
     start_epoch = 0
     err_best = 10000
     lr_now = opt.lr
+
+    now = datetime.now()
+    start_date_time_append = '_' + now.strftime("%d-%m-%Y-%H:%M:%S")
 
     # save option in log
     script_name = os.path.basename(__file__).split('.')[0]
@@ -77,7 +81,9 @@ def main(opt):
 
     acts = data_utils.define_actions('all')
     test_data = dict()
+    test_data2 = dict()
     for act in acts:
+        # Using 8 sequences of test data (following literature)
         test_dataset = H36motion3D(path_to_data=opt.data_dir, actions=act, input_n=input_n, output_n=output_n, split=1,
                                    sample_rate=sample_rate, dct_used=dct_n)
         test_data[act] = DataLoader(
@@ -86,6 +92,17 @@ def main(opt):
             shuffle=False,
             num_workers=opt.job,
             pin_memory=True)
+
+        # Using all test data set
+        test_dataset2 = H36motion3D(path_to_data=opt.data_dir, actions=act, input_n=input_n, output_n=output_n, split=1,
+                                   sample_rate=sample_rate, dct_used=dct_n, treat_subj5_differently=False)
+        test_data2[act] = DataLoader(
+            dataset=test_dataset2,
+            batch_size=opt.test_batch,
+            shuffle=False,
+            num_workers=opt.job,
+            pin_memory=True)
+
     val_dataset = H36motion3D(path_to_data=opt.data_dir, actions='all', input_n=input_n, output_n=output_n,
                               split=2, dct_used=dct_n, sample_rate=sample_rate)
 
@@ -130,23 +147,33 @@ def main(opt):
         test_3d_temp = np.array([])
         test_3d_head = np.array([])
         for act in acts:
+            # Using 8 sequences of test data
             test_l, test_3d = test(test_data[act], model, input_n=input_n, output_n=output_n, is_cuda=is_cuda,
                                    dim_used=train_dataset.dim_used, dct_n=dct_n)
-            # ret_log = np.append(ret_log, test_l)
             ret_log = np.append(ret_log, test_3d)
             head = np.append(head,
                              [act + '3d80', act + '3d160', act + '3d320', act + '3d400'])
             if output_n > 10:
                 head = np.append(head, [act + '3d560', act + '3d1000'])
+
+            # Using all of the test data
+            test_l, test_3d = test(test_data2[act], model, input_n=input_n, output_n=output_n, is_cuda=is_cuda,
+                                   dim_used=train_dataset.dim_used, dct_n=dct_n)
+            ret_log = np.append(ret_log, test_3d)
+            act2 = 'usingfulltestset_' + act
+            head = np.append(head,
+                             [act2 + '3d80', act2 + '3d160', act2 + '3d320', act2 + '3d400'])
+            if output_n > 10:
+                head = np.append(head, [act2 + '3d560', act2 + '3d1000'])
         ret_log = np.append(ret_log, test_3d_temp)
         head = np.append(head, test_3d_head)
 
         # update log file and save checkpoint
         df = pd.DataFrame(np.expand_dims(ret_log, axis=0))
         if epoch == start_epoch:
-            df.to_csv(opt.ckpt + '/' + script_name + '.csv', header=head, index=False)
+            df.to_csv(opt.ckpt + '/' + script_name + start_date_time_append + '.csv', header=head, index=False)
         else:
-            with open(opt.ckpt + '/' + script_name + '.csv', 'a') as f:
+            with open(opt.ckpt + '/' + script_name + start_date_time_append + '.csv', 'a') as f:
                 df.to_csv(f, header=False, index=False)
         if not np.isnan(v_3d):
             is_best = v_3d < err_best
