@@ -18,6 +18,8 @@ from utils.opt import Options
 from utils.h36motion3d import H36motion3D
 import utils.model as nnmodel
 import utils.data_utils as data_utils
+from utils.constants import *
+from datetime import datetime
 
 
 def main(opt):
@@ -25,6 +27,9 @@ def main(opt):
     err_best = 10000
     lr_now = opt.lr
     is_cuda = torch.cuda.is_available()
+
+    now = datetime.now()
+    start_date_time_append = '_' + now.strftime("%d-%m-%Y-%H:%M:%S")
 
     # save option in log
     script_name = os.path.basename(__file__).split('.')[0]
@@ -66,7 +71,9 @@ def main(opt):
 
     acts = data_utils.define_actions('all')
     test_data = dict()
+    test_data2 = dict()
     for act in acts:
+        # Using 8 sequences of test data (following literature)
         test_dataset = H36motion3D(path_to_data=opt.data_dir, actions=act, input_n=input_n, output_n=output_n, split=1,
                                    sample_rate=sample_rate, dct_used=dct_n)
         test_data[act] = DataLoader(
@@ -75,6 +82,17 @@ def main(opt):
             shuffle=False,
             num_workers=opt.job,
             pin_memory=True)
+
+        # Using all test data set
+        test_dataset2 = H36motion3D(path_to_data=opt.data_dir, actions=act, input_n=input_n, output_n=output_n, split=1,
+                                   sample_rate=sample_rate, dct_used=dct_n, treat_subj5_differently=False)
+        test_data2[act] = DataLoader(
+            dataset=test_dataset2,
+            batch_size=opt.test_batch,
+            shuffle=False,
+            num_workers=opt.job,
+            pin_memory=True)
+
     val_dataset = H36motion3D(path_to_data=opt.data_dir, actions='all', input_n=input_n, output_n=output_n,
                               split=2, dct_used=dct_n, sample_rate=sample_rate)
 
@@ -119,23 +137,34 @@ def main(opt):
         test_3d_temp = np.array([])
         test_3d_head = np.array([])
         for act in acts:
+            # Using 8 sequences of test data
             test_l, test_3d = test(test_data[act], model, input_n=input_n, output_n=output_n, is_cuda=is_cuda,
                                    dim_used=train_dataset.dim_used, dct_n=dct_n)
-            # ret_log = np.append(ret_log, test_l)
             ret_log = np.append(ret_log, test_3d)
             head = np.append(head,
                              [act + '3d80', act + '3d160', act + '3d320', act + '3d400'])
             if output_n > 10:
                 head = np.append(head, [act + '3d560', act + '3d1000'])
+
+            # Using all of the test data
+            test_l, test_3d = test(test_data2[act], model, input_n=input_n, output_n=output_n, is_cuda=is_cuda,
+                                   dim_used=train_dataset.dim_used, dct_n=dct_n)
+            ret_log = np.append(ret_log, test_3d)
+            act2 = 'usingfulltestset_' + act
+            head = np.append(head,
+                             [act2 + '3d80', act2 + '3d160', act2 + '3d320', act2 + '3d400'])
+            if output_n > 10:
+                head = np.append(head, [act2 + '3d560', act2 + '3d1000'])
+
         ret_log = np.append(ret_log, test_3d_temp)
         head = np.append(head, test_3d_head)
 
         # update log file and save checkpoint
         df = pd.DataFrame(np.expand_dims(ret_log, axis=0))
         if epoch == start_epoch:
-            df.to_csv(opt.ckpt + '/' + script_name + '.csv', header=head, index=False)
+            df.to_csv(opt.ckpt + '/' + script_name + start_date_time_append + '.csv', header=head, index=False)
         else:
-            with open(opt.ckpt + '/' + script_name + '.csv', 'a') as f:
+            with open(opt.ckpt + '/' + script_name + start_date_time_append + '.csv', 'a') as f:
                 df.to_csv(f, header=False, index=False)
         if not np.isnan(v_3d):
             is_best = v_3d < err_best
@@ -168,7 +197,8 @@ def train(train_loader, model, optimizer, lr_now=None, max_norm=True, is_cuda=Fa
         bt = time.time()
         if is_cuda:
             inputs = Variable(inputs.cuda()).float()
-            all_seq = Variable(all_seq.cuda(async=True)).float()
+            # all_seq = Variable(all_seq.cuda(async=True)).float()
+            all_seq = all_seq.to(MY_DEVICE).float()
 
         outputs = model(inputs)
 
@@ -177,11 +207,11 @@ def train(train_loader, model, optimizer, lr_now=None, max_norm=True, is_cuda=Fa
         optimizer.zero_grad()
         loss.backward()
         if max_norm:
-            nn.utils.clip_grad_norm(model.parameters(), max_norm=1)
+            nn.utils.clip_grad_norm_(model.parameters(), max_norm=1)
         optimizer.step()
 
         # update the training loss
-        t_l.update(loss.cpu().data.numpy()[0] * batch_size, batch_size)
+        t_l.update(loss.cpu().data.numpy() * batch_size, batch_size)
 
         bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i+1, len(train_loader), time.time() - bt,
                                                                          time.time() - st)
@@ -207,7 +237,8 @@ def test(train_loader, model, input_n=20, output_n=50, is_cuda=False, dim_used=[
 
         if is_cuda:
             inputs = Variable(inputs.cuda()).float()
-            all_seq = Variable(all_seq.cuda(async=True)).float()
+            # all_seq = Variable(all_seq.cuda(async=True)).float()
+            all_seq = all_seq.to(MY_DEVICE).float()
 
         outputs = model(inputs)
 
@@ -215,7 +246,7 @@ def test(train_loader, model, input_n=20, output_n=50, is_cuda=False, dim_used=[
         dim_used_len = len(dim_used)
 
         _, idct_m = data_utils.get_dct_matrix(seq_len)
-        idct_m = Variable(torch.from_numpy(idct_m)).float().cuda()
+        idct_m = Variable(torch.from_numpy(idct_m)).float().to(MY_DEVICE)
         outputs_t = outputs.view(-1, dct_n).transpose(0, 1)
         outputs_3d = torch.matmul(idct_m[:, 0:dct_n], outputs_t).transpose(0, 1).contiguous().view(-1, dim_used_len,
                                                                                                    seq_len).transpose(1,
@@ -238,7 +269,7 @@ def test(train_loader, model, input_n=20, output_n=50, is_cuda=False, dim_used=[
             j = eval_frame[k]
             t_3d[k] += torch.mean(torch.norm(
                 targ_p3d[:, j, :, :].contiguous().view(-1, 3) - pred_p3d[:, j, :, :].contiguous().view(-1, 3), 2,
-                1)).cpu().data.numpy()[0] * n
+                1)).cpu().data.numpy() * n
 
         N += n
 
@@ -260,7 +291,8 @@ def val(train_loader, model, is_cuda=False, dim_used=[], dct_n=15):
 
         if is_cuda:
             inputs = Variable(inputs.cuda()).float()
-            all_seq = Variable(all_seq.cuda(async=True)).float()
+            # all_seq = Variable(all_seq.cuda(async=True)).float()
+            all_seq = all_seq.to(MY_DEVICE).float()
 
         outputs = model(inputs)
 
@@ -269,7 +301,7 @@ def val(train_loader, model, is_cuda=False, dim_used=[], dct_n=15):
         m_err = loss_funcs.mpjpe_error_p3d(outputs, all_seq, dct_n, dim_used)
 
         # update the training loss
-        t_3d.update(m_err.cpu().data.numpy()[0] * n, n)
+        t_3d.update(m_err.cpu().data.numpy() * n, n)
 
         bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i+1, len(train_loader), time.time() - bt,
                                                                          time.time() - st)
