@@ -33,6 +33,7 @@ def main(opt):
 
     # save option in log
     script_name = os.path.basename(__file__).split('.')[0]
+    script_name = opt.filename_ext + script_name
     script_name = script_name + '_3D_in{:d}_out{:d}_dct_n_{:d}'.format(opt.input_n, opt.output_n, opt.dct_n)
 
     # create model

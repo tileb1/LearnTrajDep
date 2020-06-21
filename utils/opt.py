@@ -38,6 +38,7 @@ class Options:
         self.parser.add_argument('--lr_decay', type=int, default=2, help='every lr_decay epoch do lr decay')
         self.parser.add_argument('--lr_gamma', type=float, default=0.96)
         self.parser.add_argument('--input_n', type=int, default=10, help='observed seq length')
+
         self.parser.add_argument('--output_n', type=int, default=25, help='future seq length')
         self.parser.add_argument('--dct_n', type=int, default=30, help='number of DCT coeff. preserved for 3D')
         self.parser.add_argument('--actions', type=str, default='all', help='path to save checkpoint')
@@ -51,6 +52,8 @@ class Options:
         self.parser.add_argument('--sample_rate', type=int, default=2, help='frame sampling rate')
         self.parser.add_argument('--is_norm_dct', dest='is_norm_dct', action='store_true', help='whether to normalize the dct coeff')
         self.parser.add_argument('--is_norm', dest='is_norm', action='store_true', help='whether to normalize the angles/3d coordinates')
+
+        self.parser.add_argument('--filename_ext', type=str, default='')
 
         self.parser.set_defaults(max_norm=True)
         self.parser.set_defaults(is_load=False)
