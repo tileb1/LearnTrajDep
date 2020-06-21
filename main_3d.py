@@ -33,7 +33,6 @@ def main(opt):
 
     # save option in log
     script_name = os.path.basename(__file__).split('.')[0]
-    script_name = opt.filename_ext + script_name
     script_name = script_name + '_3D_in{:d}_out{:d}_dct_n_{:d}'.format(opt.input_n, opt.output_n, opt.dct_n)
 
     # create model
@@ -43,19 +42,9 @@ def main(opt):
     dct_n = opt.dct_n
     sample_rate = opt.sample_rate
 
-    # time_autoencoder1 = TimeAutoencoder(opt.input_n + opt.output_n, dct_n)
-    # extension = 'RAW'
-    # name1 = 'autoencoder_' + str(opt.input_n + opt.output_n) + '_' + str(opt.dct_n) + '_' + extension + '.pt'
-    # utils.load_model(time_autoencoder1, name1)
-    #
-    # time_autoencoder2 = TimeAutoencoder(opt.input_n + opt.output_n, dct_n)
-    # extension = 'SUBSAMPLED'
-    # name2 = 'autoencoder_' + str(opt.input_n + opt.output_n) + '_' + str(opt.dct_n) + '_' + extension + '.pt'
-    # utils.load_model(time_autoencoder2, name2)
-
-    # model = nnmodel.MultipleGCN(dct_n, opt.linear_size, opt.dropout, time_autoencoder1, time_autoencoder2, opt,
-    #                     num_stage=opt.num_stage, node_n=66)
     model = nnmodel.InceptionGCN(opt.linear_size, opt.dropout, num_stage=opt.num_stage, node_n=66, opt=opt)
+    script_name = '-'.join(str(i) for i in model.time_inception_mod.observed_length) + script_name
+    print(script_name)
 
     model.to(MY_DEVICE)
 
