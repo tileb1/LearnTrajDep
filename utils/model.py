@@ -262,13 +262,24 @@ class Conv1Channel(nn.Module):
 class TimeInceptionModule(nn.Module):
     def __init__(self):
         super().__init__()
-        self.observed_length = [10, 10, 10, 10]
+        self.observed_length = [4, 4, 6, 6, 8, 8, 10, 10]
         self.convolutions = nn.ModuleList([])
 
-        self.convolutions.append(Conv1Channel(nb_filters=12, filter_size=2))
-        self.convolutions.append(Conv1Channel(nb_filters=9, filter_size=3))
-        self.convolutions.append(Conv1Channel(nb_filters=7, filter_size=5))
-        self.convolutions.append(Conv1Channel(nb_filters=6, filter_size=7))
+        # 4
+        self.convolutions.append(Conv1Channel(nb_filters=10, filter_size=2))
+        self.convolutions.append(Conv1Channel(nb_filters=10, filter_size=3))
+
+        # 6
+        self.convolutions.append(Conv1Channel(nb_filters=8, filter_size=2))
+        self.convolutions.append(Conv1Channel(nb_filters=8, filter_size=3))
+
+        # 8
+        self.convolutions.append(Conv1Channel(nb_filters=6, filter_size=4))
+        self.convolutions.append(Conv1Channel(nb_filters=6, filter_size=5))
+
+        # 10
+        self.convolutions.append(Conv1Channel(nb_filters=4, filter_size=6))
+        self.convolutions.append(Conv1Channel(nb_filters=4, filter_size=7))
 
         self.output_size = self.forward(torch.ones(1, 1, 100)).shape[2]
         assert(len(self.observed_length) == len(self.convolutions))
