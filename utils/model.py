@@ -262,10 +262,14 @@ class Conv1Channel(nn.Module):
 class TimeInceptionModule(nn.Module):
     def __init__(self):
         super().__init__()
-        self.observed_length = [10, 10, 10, 10]
+        self.observed_length = [5, 5, 10, 10, 10]
         self.convolutions = nn.ModuleList([])
 
+        # 5
         self.convolutions.append(Conv1Channel(nb_filters=12, filter_size=2))
+        self.convolutions.append(Conv1Channel(nb_filters=9, filter_size=3))
+        
+        # 10
         self.convolutions.append(Conv1Channel(nb_filters=9, filter_size=3))
         self.convolutions.append(Conv1Channel(nb_filters=7, filter_size=5))
         self.convolutions.append(Conv1Channel(nb_filters=6, filter_size=7))
