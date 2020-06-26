@@ -71,16 +71,16 @@ def main(opt):
     #                             split=0, dct_used=dct_n, sample_rate=sample_rate)
 
     train_dataset = CMU_Motion3D(path_to_data=opt.data_dir_cmu, actions='all', input_n=input_n, output_n=output_n,
-                                 split=0, dct_n=opt.dct_n)
+                                 split=0, dct_used=opt.dct_n)
 
-    acts = data_utils.define_actions('all')
+    acts = data_utils.define_actions_cmu('all')
     test_data = dict()
-    test_data2 = dict()
+    # test_data2 = dict()
     for act in acts:
         # Using 8 sequences of test data (following literature)
         test_dataset = CMU_Motion3D(path_to_data=opt.data_dir_cmu, actions=act, input_n=input_n, output_n=output_n,
                                     split=1, data_mean=train_dataset.data_mean, data_std=train_dataset.data_std,
-                                    dim_used=train_dataset.dim_used, dct_n=dct_n)
+                                    dim_used=train_dataset.dim_used, dct_used=dct_n)
         test_data[act] = DataLoader(
             dataset=test_dataset,
             batch_size=opt.test_batch,
@@ -151,15 +151,15 @@ def main(opt):
             if output_n > 10:
                 head = np.append(head, [act + '3d560', act + '3d1000'])
 
-            # Using all of the test data
-            test_l, test_3d = test(test_data2[act], model, input_n=input_n, output_n=output_n, is_cuda=is_cuda,
-                                   dim_used=train_dataset.dim_used, dct_n=dct_n)
-            ret_log = np.append(ret_log, test_3d)
-            act2 = 'usingfulltestset_' + act
-            head = np.append(head,
-                             [act2 + '3d80', act2 + '3d160', act2 + '3d320', act2 + '3d400'])
-            if output_n > 10:
-                head = np.append(head, [act2 + '3d560', act2 + '3d1000'])
+            # # Using all of the test data
+            # test_l, test_3d = test(test_data2[act], model, input_n=input_n, output_n=output_n, is_cuda=is_cuda,
+            #                        dim_used=train_dataset.dim_used, dct_n=dct_n)
+            # ret_log = np.append(ret_log, test_3d)
+            # act2 = 'usingfulltestset_' + act
+            # head = np.append(head,
+            #                  [act2 + '3d80', act2 + '3d160', act2 + '3d320', act2 + '3d400'])
+            # if output_n > 10:
+            #     head = np.append(head, [act2 + '3d560', act2 + '3d1000'])
         ret_log = np.append(ret_log, test_3d_temp)
         head = np.append(head, test_3d_head)
 

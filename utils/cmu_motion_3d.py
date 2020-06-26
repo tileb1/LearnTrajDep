@@ -21,7 +21,7 @@ class CMU_Motion3D(Dataset):
         self.path_to_data = path_to_data
         self.split = split
         self.dct_used = dct_used
-
+        print(actions)
         actions = data_utils.define_actions_cmu(actions)
 
         if split == 0:
