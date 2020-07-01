@@ -288,7 +288,6 @@ class TimeInceptionModule(nn.Module):
             x = inpt[:, :, -obs_len:]
             y = conv(x)
             out = torch.cat((out, y), 2)
-            print(y.shape)
 
         return out
 
