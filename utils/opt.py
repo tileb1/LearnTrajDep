@@ -28,7 +28,7 @@ class Options:
         self.parser.add_argument('--max_norm', dest='max_norm', action='store_true',
                                  help='maxnorm constraint to weights')
         self.parser.add_argument('--linear_size', type=int, default=256, help='size of each model layer')
-        self.parser.add_argument('--num_stage', type=int, default=12, help='# layers in linear model')
+        self.parser.add_argument('--num_stage', type=int, default=6, help='# layers in linear model')
 
         # ===============================================================
         #                     Running options
