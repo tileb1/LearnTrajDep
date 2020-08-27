@@ -9,6 +9,7 @@ import h5py
 import os
 from mpl_toolkits.mplot3d import Axes3D
 from utils import forward_kinematics as fk
+from PIL import Image
 
 
 class Ax3DPose(object):
@@ -39,9 +40,9 @@ class Ax3DPose(object):
             z = np.array([vals[self.I[i], 2], vals[self.J[i], 2]])
             if i == 0:
                 self.plots.append(
-                    self.ax.plot(x, z, y, lw=2, linestyle='--', c='black', label=label[0]))
+                    self.ax.plot(x, z, y, lw=2, c='black', label=label[0]))
             else:
-                self.plots.append(self.ax.plot(x, y, z, lw=2, linestyle='--', c='black'))
+                self.plots.append(self.ax.plot(x, y, z, lw=2, c='black'))
 
         self.plots_pred = []
         for i in np.arange(len(self.I)):
@@ -130,15 +131,15 @@ def plot_predictions(expmap_gt, expmap_pred, fig, ax, f_title):
     for i in range(nframes_pred):
 
         ob.update(xyz_gt[i, :], xyz_pred[i, :])
-        ax.set_title(f_title + ' frame:{:d}'.format(i + 1), loc="left")
+        # ax.set_title(f_title + ' frame:{:d}'.format(i + 1), loc="left")
         plt.show(block=False)
 
         fig.canvas.draw()
-        plt.pause(0.05)
+        # plt.pause(0.05)
 
 
 frame_index_lst = [0]
-def plot_predictions2(expmap_gt, expmap_pred, fig, ax, f_title, mao_pred=None):
+def plot_predictions2(expmap_gt, expmap_pred, fig, ax, f_title, mao_pred=None, action='', gt=True):
     nframes_pred = expmap_pred.shape[0]
 
     xyz_gt = expmap_gt
@@ -147,16 +148,24 @@ def plot_predictions2(expmap_gt, expmap_pred, fig, ax, f_title, mao_pred=None):
     # === Plot and animate ===
     ob = Ax3DPose2(ax)
     # Plot the prediction
+    frame_index_lst[0] = 0
     for i in range(nframes_pred):
-
+        ob = Ax3DPose2(ax)
         ob.update2(xyz_gt[i, :], xyz_pred[i, :], mao_pred[i, :])
-        ax.set_title(f_title + ' frame:{:d}'.format(i + 1), loc="left")
+        # ax.set_title(f_title + ' frame:{:d}'.format(i + 1), loc="left")
         plt.show(block=False)
 
         fig.canvas.draw()
         plt.savefig('./fig/img-' + str(frame_index_lst[0]).zfill(3) + '.png')
+
+        pic = Image.open('./fig/img-' + str(frame_index_lst[0]).zfill(3) + '.png')
+        A_img = np.asarray(pic)
+        A_img = A_img[120:-120, 210:-190, :]
+        im = Image.fromarray(A_img)
+        im.save('fig/{}{}_gt_{}.png'.format(action, frame_index_lst[0], str(gt)))
         frame_index_lst[0] += 1
-        plt.pause(0.05)
+        # plt.pause(0.05)
+        ax.cla()
 
 
 class Ax3DPose2(object):
@@ -188,39 +197,60 @@ class Ax3DPose2(object):
             z = np.array([vals[self.I[i], 2], vals[self.J[i], 2]])
             if i == 0:
                 self.plots.append(
-                    self.ax.plot(x, z, y, lw=2, linestyle='--', c='black', label=label[0]))
+                    self.ax.plot(x, z, y, lw=2, c='black'))
             else:
-                self.plots.append(self.ax.plot(x, y, z, lw=2, linestyle='--', c='black'))
+                self.plots.append(self.ax.plot(x, y, z, lw=2, c='black'))
 
-        self.plots_pred_mao = []
-        for i in np.arange(len(self.I)):
-            x = np.array([vals[self.I[i], 0], vals[self.J[i], 0]])
-            y = np.array([vals[self.I[i], 1], vals[self.J[i], 1]])
-            z = np.array([vals[self.I[i], 2], vals[self.J[i], 2]])
-            if i == 0:
-                self.plots_pred_mao.append(self.ax.plot(x, y, z, lw=2, c='blue', label=label[2]))
-            else:
-                self.plots_pred_mao.append(self.ax.plot(x, y, z, lw=2, c='blue'))
+        # self.plots_pred_mao = []
+        # for i in np.arange(len(self.I)):
+        #     x = np.array([vals[self.I[i], 0], vals[self.J[i], 0]])
+        #     y = np.array([vals[self.I[i], 1], vals[self.J[i], 1]])
+        #     z = np.array([vals[self.I[i], 2], vals[self.J[i], 2]])
+        #     if i == 0:
+        #         self.plots_pred_mao.append(self.ax.plot(x, y, z, lw=2, c='blue', label=label[2]))
+        #     else:
+        #         self.plots_pred_mao.append(self.ax.plot(x, y, z, lw=2, c='blue'))
 
-        self.plots_pred = []
-        for i in np.arange(len(self.I)):
-            x = np.array([vals[self.I[i], 0], vals[self.J[i], 0]])
-            y = np.array([vals[self.I[i], 1], vals[self.J[i], 1]])
-            z = np.array([vals[self.I[i], 2], vals[self.J[i], 2]])
-            if i == 0:
-                self.plots_pred.append(self.ax.plot(x, y, z, lw=2, c='red', label=label[1]))
-            else:
-                self.plots_pred.append(self.ax.plot(x, y, z, lw=2, c='red'))
+        # self.plots_pred = []
+        # for i in np.arange(len(self.I)):
+        #     x = np.array([vals[self.I[i], 0], vals[self.J[i], 0]])
+        #     y = np.array([vals[self.I[i], 1], vals[self.J[i], 1]])
+        #     z = np.array([vals[self.I[i], 2], vals[self.J[i], 2]])
+        #     if i == 0:
+        #         self.plots_pred.append(self.ax.plot(x, y, z, lw=2, c='red', label=label[1]))
+        #     else:
+        #         self.plots_pred.append(self.ax.plot(x, y, z, lw=2, c='red'))
 
 
-        self.ax.set_xlabel("x")
-        self.ax.set_ylabel("y")
-        self.ax.set_zlabel("z")
+        # self.ax.set_xlabel("x")
+        # self.ax.set_ylabel("y")
+        # self.ax.set_zlabel("z")
         # self.ax.set_axis_off()
         # self.ax.axes.get_xaxis().set_visible(False)
         # self.axes.get_yaxis().set_visible(False)
         self.ax.legend(loc='lower left')
         self.ax.view_init(120, -90)
+
+        # Get rid of the ticks and tick labels
+        self.ax.set_xticks([])
+        self.ax.set_yticks([])
+        self.ax.set_zticks([])
+
+        self.ax.get_xaxis().set_ticklabels([])
+        self.ax.get_yaxis().set_ticklabels([])
+        self.ax.set_zticklabels([])
+
+        # Get rid of the panes (actually, make them white)
+        white = (1.0, 1.0, 1.0, 0.0)
+        self.ax.w_xaxis.set_pane_color(white)
+        self.ax.w_yaxis.set_pane_color(white)
+        self.ax.w_zaxis.set_pane_color(white)
+        # Keep z pane
+
+        # Get rid of the lines in 3d
+        self.ax.w_xaxis.line.set_color(white)
+        self.ax.w_yaxis.line.set_color(white)
+        self.ax.w_zaxis.line.set_color(white)
 
     def update2(self, gt_channels, pred_channels, pred_channels_mao):
         """
@@ -236,8 +266,8 @@ class Ax3DPose2(object):
         self.frame_index += 1
         assert gt_channels.size == 96, "channels should have 96 entries, it has %d instead" % gt_channels.size
         gt_vals = np.reshape(gt_channels, (32, -1))
-        lcolor = "black"
-        rcolor = "black"
+        lcolor = "red"
+        rcolor = "red"
         for i in np.arange(len(self.I)):
             x = np.array([gt_vals[self.I[i], 0], gt_vals[self.J[i], 0]])
             y = np.array([gt_vals[self.I[i], 1], gt_vals[self.J[i], 1]])
@@ -247,34 +277,37 @@ class Ax3DPose2(object):
             self.plots[i][0].set_3d_properties(z)
             self.plots[i][0].set_color(lcolor if self.LR[i] else rcolor)
             # self.plots[i][0].set_alpha(0.5)
+        for index in [0,1,2,3,6,7,8,12,13,14,15,17,18,19,25,26,27]:
+            joint = gt_vals[index]
+            self.ax.scatter(joint[0], joint[1], joint[2], c='black', zorder=2, s=5)
 
-        assert pred_channels_mao.size == 96, "channels should have 96 entries, it has %d instead" % pred_channels_mao.size
-        pred_vals = np.reshape(pred_channels_mao, (32, -1))
-        lcolor = "blue"
-        rcolor = "blue"
-        for i in np.arange(len(self.I)):
-            x = np.array([pred_vals[self.I[i], 0], pred_vals[self.J[i], 0]])
-            y = np.array([pred_vals[self.I[i], 1], pred_vals[self.J[i], 1]])
-            z = np.array([pred_vals[self.I[i], 2], pred_vals[self.J[i], 2]])
-            self.plots_pred_mao[i][0].set_xdata(x)
-            self.plots_pred_mao[i][0].set_ydata(y)
-            self.plots_pred_mao[i][0].set_3d_properties(z)
-            self.plots_pred_mao[i][0].set_color(lcolor if self.LR[i] else rcolor)
-            self.plots_pred_mao[i][0].set_alpha(0.7)
-
-        assert pred_channels.size == 96, "channels should have 96 entries, it has %d instead" % pred_channels.size
-        pred_vals = np.reshape(pred_channels, (32, -1))
-        lcolor = "red"
-        rcolor = "red"
-        for i in np.arange(len(self.I)):
-            x = np.array([pred_vals[self.I[i], 0], pred_vals[self.J[i], 0]])
-            y = np.array([pred_vals[self.I[i], 1], pred_vals[self.J[i], 1]])
-            z = np.array([pred_vals[self.I[i], 2], pred_vals[self.J[i], 2]])
-            self.plots_pred[i][0].set_xdata(x)
-            self.plots_pred[i][0].set_ydata(y)
-            self.plots_pred[i][0].set_3d_properties(z)
-            self.plots_pred[i][0].set_color(lcolor if self.LR[i] else rcolor)
-            self.plots_pred[i][0].set_alpha(0.7)
+        # assert pred_channels_mao.size == 96, "channels should have 96 entries, it has %d instead" % pred_channels_mao.size
+        # pred_vals = np.reshape(pred_channels_mao, (32, -1))
+        # lcolor = "blue"
+        # rcolor = "blue"
+        # for i in np.arange(len(self.I)):
+        #     x = np.array([pred_vals[self.I[i], 0], pred_vals[self.J[i], 0]])
+        #     y = np.array([pred_vals[self.I[i], 1], pred_vals[self.J[i], 1]])
+        #     z = np.array([pred_vals[self.I[i], 2], pred_vals[self.J[i], 2]])
+        #     self.plots_pred_mao[i][0].set_xdata(x)
+        #     self.plots_pred_mao[i][0].set_ydata(y)
+        #     self.plots_pred_mao[i][0].set_3d_properties(z)
+        #     self.plots_pred_mao[i][0].set_color(lcolor if self.LR[i] else rcolor)
+        #     self.plots_pred_mao[i][0].set_alpha(0.7)
+        #
+        # assert pred_channels.size == 96, "channels should have 96 entries, it has %d instead" % pred_channels.size
+        # pred_vals = np.reshape(pred_channels, (32, -1))
+        # lcolor = "red"
+        # rcolor = "red"
+        # for i in np.arange(len(self.I)):
+        #     x = np.array([pred_vals[self.I[i], 0], pred_vals[self.J[i], 0]])
+        #     y = np.array([pred_vals[self.I[i], 1], pred_vals[self.J[i], 1]])
+        #     z = np.array([pred_vals[self.I[i], 2], pred_vals[self.J[i], 2]])
+        #     self.plots_pred[i][0].set_xdata(x)
+        #     self.plots_pred[i][0].set_ydata(y)
+        #     self.plots_pred[i][0].set_3d_properties(z)
+        #     self.plots_pred[i][0].set_color(lcolor if self.LR[i] else rcolor)
+        #     self.plots_pred[i][0].set_alpha(0.7)
 
 
         r = 750

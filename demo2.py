@@ -27,7 +27,7 @@ def main(opt):
 
     # My model
     model = nnmodel.InceptionGCN(opt.linear_size, opt.dropout, num_stage=opt.num_stage, node_n=66, opt=opt)
-    model_path_len = './checkpoint/test/66ckpt_main_3d_3D_in10_out25_dct_n_30_best.pth.tar'
+    model_path_len = './checkpoint/test/ckpt_main_3d_3D_in10_out25_dct_n_30_best.pth.tar'
     print(">>> loading ckpt len from '{}'".format(model_path_len))
     ckpt = torch.load(model_path_len, map_location='cpu')
     err_best = ckpt['err']
@@ -64,9 +64,10 @@ def main(opt):
     model.eval()
     fig = plt.figure()
     ax = plt.gca(projection='3d')
-    for act in ['walking', 'eating', 'smoking', 'discussion']:
+    for act in acts:
+        print(act)
         for i, (_, inputs, all_seq) in enumerate(test_data[act]):
-
+            print(act)
             preds = model(inputs)
             pred_exmap = all_seq.clone()
             pred_exmap[:, :, dim_used] = preds.detach().transpose(1, 2)
@@ -79,9 +80,9 @@ def main(opt):
             for k in range(0, 1):
                 plt.cla()
                 figure_title = "action:{}, seq:{},".format(act, (k + 1))
-                viz.plot_predictions2(all_seq.numpy()[k, :, :], pred_exmap.numpy()[k, :, :], fig, ax, figure_title,
-                                      mao_pred=pred_exmap_mao.numpy()[k, :, :])
-                plt.pause(1)
+                viz.plot_predictions2(pred_exmap.numpy()[k, :, :], pred_exmap.numpy()[k, :, :], fig, ax, figure_title,
+                                      mao_pred=pred_exmap_mao.numpy()[k, :, :], action=act, gt=False)
+                # plt.pause(1)
 
 
 if __name__ == "__main__":
