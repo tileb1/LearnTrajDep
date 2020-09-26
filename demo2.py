@@ -66,6 +66,8 @@ def main(opt):
     ax = plt.gca(projection='3d')
     for act in acts:
         print(act)
+        if act not in ['smoking', 'eating', 'discussion', 'walking']:
+            continue
         for i, (_, inputs, all_seq) in enumerate(test_data[act]):
             print(act)
             preds = model(inputs)
@@ -77,11 +79,11 @@ def main(opt):
             pred_exmap_mao = all_seq.clone()
             pred_exmap_mao[:, :, dim_used] = preds_mao.detach().transpose(1, 2)
 
-            for k in range(0, 1):
+            for k in range(0, 8):
                 plt.cla()
                 figure_title = "action:{}, seq:{},".format(act, (k + 1))
-                viz.plot_predictions2(pred_exmap.numpy()[k, :, :], pred_exmap.numpy()[k, :, :], fig, ax, figure_title,
-                                      mao_pred=pred_exmap_mao.numpy()[k, :, :], action=act, gt=False)
+                viz.plot_predictions2(all_seq.numpy()[k, :, :], pred_exmap_mao.numpy()[k, :, :], fig, ax, figure_title,
+                                      mao_pred=pred_exmap_mao.numpy()[k, :, :], action=act, gt=False, subsequence=k)
                 # plt.pause(1)
 
 

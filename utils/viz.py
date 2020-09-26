@@ -139,7 +139,7 @@ def plot_predictions(expmap_gt, expmap_pred, fig, ax, f_title):
 
 
 frame_index_lst = [0]
-def plot_predictions2(expmap_gt, expmap_pred, fig, ax, f_title, mao_pred=None, action='', gt=True):
+def plot_predictions2(expmap_gt, expmap_pred, fig, ax, f_title, mao_pred=None, action='', gt=True, subsequence=None):
     nframes_pred = expmap_pred.shape[0]
 
     xyz_gt = expmap_gt
@@ -160,9 +160,10 @@ def plot_predictions2(expmap_gt, expmap_pred, fig, ax, f_title, mao_pred=None, a
 
         pic = Image.open('./fig/img-' + str(frame_index_lst[0]).zfill(3) + '.png')
         A_img = np.asarray(pic)
-        A_img = A_img[120:-120, 210:-190, :]
+        A_img = A_img[120:-100, 210:-190, :]
         im = Image.fromarray(A_img)
-        im.save('fig/{}{}_gt_{}.png'.format(action, frame_index_lst[0], str(gt)))
+        # im.save('fig/{}{}{}_mypred_{}.png'.format(str(subsequence), action, frame_index_lst[0], str(gt)))
+        im.save('fig/{}{}{}_GT.png'.format(str(subsequence), action, frame_index_lst[0]))
         frame_index_lst[0] += 1
         # plt.pause(0.05)
         ax.cla()
@@ -217,9 +218,9 @@ class Ax3DPose2(object):
         #     y = np.array([vals[self.I[i], 1], vals[self.J[i], 1]])
         #     z = np.array([vals[self.I[i], 2], vals[self.J[i], 2]])
         #     if i == 0:
-        #         self.plots_pred.append(self.ax.plot(x, y, z, lw=2, c='red', label=label[1]))
+        #         self.plots_pred.append(self.ax.plot(x, y, z, lw=2, c='blue', label=label[1]))
         #     else:
-        #         self.plots_pred.append(self.ax.plot(x, y, z, lw=2, c='red'))
+        #         self.plots_pred.append(self.ax.plot(x, y, z, lw=2, c='blue'))
 
 
         # self.ax.set_xlabel("x")
@@ -266,8 +267,8 @@ class Ax3DPose2(object):
         self.frame_index += 1
         assert gt_channels.size == 96, "channels should have 96 entries, it has %d instead" % gt_channels.size
         gt_vals = np.reshape(gt_channels, (32, -1))
-        lcolor = "red"
-        rcolor = "red"
+        lcolor = "black"
+        rcolor = "black"
         for i in np.arange(len(self.I)):
             x = np.array([gt_vals[self.I[i], 0], gt_vals[self.J[i], 0]])
             y = np.array([gt_vals[self.I[i], 1], gt_vals[self.J[i], 1]])
@@ -276,10 +277,10 @@ class Ax3DPose2(object):
             self.plots[i][0].set_ydata(y)
             self.plots[i][0].set_3d_properties(z)
             self.plots[i][0].set_color(lcolor if self.LR[i] else rcolor)
-            # self.plots[i][0].set_alpha(0.5)
+            self.plots[i][0].set_alpha(0.7)
         for index in [0,1,2,3,6,7,8,12,13,14,15,17,18,19,25,26,27]:
             joint = gt_vals[index]
-            self.ax.scatter(joint[0], joint[1], joint[2], c='black', zorder=2, s=5)
+            self.ax.scatter(joint[0], joint[1], joint[2], c='black', zorder=2, s=5, alpha=0.8)
 
         # assert pred_channels_mao.size == 96, "channels should have 96 entries, it has %d instead" % pred_channels_mao.size
         # pred_vals = np.reshape(pred_channels_mao, (32, -1))
@@ -308,6 +309,9 @@ class Ax3DPose2(object):
         #     self.plots_pred[i][0].set_3d_properties(z)
         #     self.plots_pred[i][0].set_color(lcolor if self.LR[i] else rcolor)
         #     self.plots_pred[i][0].set_alpha(0.7)
+        # for index in [0,1,2,3,6,7,8,12,13,14,15,17,18,19,25,26,27]:
+        #     joint = pred_vals[index]
+        #     self.ax.scatter(joint[0], joint[1], joint[2], c='black', zorder=2, s=5, alpha=0.8)
 
 
         r = 750
